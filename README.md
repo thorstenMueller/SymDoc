@@ -52,9 +52,9 @@ Der Objekt-Info kommt zusätzlich zum reinen beschreibenden Character noch eine 
 > Bei kommerzieller Nutzung (z.B. als Errichter oder Integrator) wenden Sie sich bitte an den Autor.
 
 * Die Instanz "SymDoc" anlegen
-![Instanz anlegen](./screenshots/symdocAddInstance.png)
+![Instanz anlegen](./symdocAddInstance.png)
 * Das Ausgabeverzeichnis der Doku angeben (der Ordner muss bereits existieren).
-![Instanz konfigurieren](./screenshots/symdocConfiguration.png)
+![Instanz konfigurieren](./symdocConfiguration.png)
 
 ### 4. Hashtags
 In der Beschreibung (ObjectInfo) von Objekten (egal welchen Typs) kann neben dem Beschreibungstext noch mit Hashtags (bspw. #Wohnzimmer, #Beleuchtung) gearbeitet werden.
@@ -82,18 +82,18 @@ Es gibt mehrere Möglichkeiten MD-Dateien zu betrachten.
 Da Bilder bekanntlich mehr sagen als Worte sind hier einige Screenshots.
 
 ### 6.1 Screenshots aus der IPS Webconsole
-![](./screenshots/objectTreeOverview.png)
-![](./screenshots/addEventWithConditions.png)
-![](./screenshots/addScriptBroken.png)
-![](./screenshots/addScriptWorking.png)
-![](./screenshots/addVarLogged.png)
+![](./objectTreeOverview.png)
+![](./addEventWithConditions.png)
+![](./addScriptBroken.png)
+![](./addScriptWorking.png)
+![](./addVarLogged.png)
 
 ### 6.2 Screenshots aus der generierten Dokumentation
-![](./screenshots/symdocOverviewHeader.png)
-![](./screenshots/symdocOverviewTocContent.png)
-![](./screenshots/symdocScript.png)
-![](./screenshots/symdocEvent.png)
-![](./screenshots/symdocOverviewUntagged.png)
+![](./symdocOverviewHeader.png)
+![](./symdocOverviewTocContent.png)
+![](./symdocScript.png)
+![](./symdocEvent.png)
+![](./symdocOverviewUntagged.png)
 
 
 ### 7. PHP Kommandos
