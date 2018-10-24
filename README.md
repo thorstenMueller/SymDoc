@@ -1,5 +1,10 @@
 # SymDoc - Dokumentation der IP-Symcon Umgebung
-Dieses Modul erzeugt auf Basis der IP-Symcon Struktur eine statische Dokumentation als MD-Dateien. Dabei werden verschiedene Objekt-Eigenschaften ausgelesen und dokumentiert. Durch die Nutzung von Hashtags (bspw. #Wohnzimmer) in den Objektinformationen kann die Dokumentation in logische Gruppen unterteilt werden.
+SymDoc erzeugt eine Dokumentation auf Basis von MD-Dateien (https://de.wikipedia.org/wiki/Markdown). Das ist die Syntax die auch für diese README Datei verwendet wird.
+Es erzeugt eine Übersichtsseite mit einer tabellarischen und gruppierten Darstellung aller (per Konfiguration) gewünschter
+Objekte. Um die Doku zu lesen gibt es u.a. Browser Plugins (Firefox Plugin: Markdown Viewer Webext).   
+Zu jedem Objekt (außer Link-Objekten) gibt es einen Hyperlink der auf eine Detailseite des jeweiligen Objektes verweist.
+In dieser tabellarischen Darstellung wird bspw. auch die Objekt-Info als Beschreibung ausgegeben.
+Der Objekt-Info kommt zusätzlich zum reinen beschreibenden Character noch eine wesentliche Funktion zu - Tags (Details siehe weiter unten).
 
 > Dieses Modul wurde nach bestem Wissen und Gewissen erstellt. Der Einsatz erfolgt auf eigene Gefahr und der Autor ist nicht haftbar für eventuelle Schäden.
 
@@ -8,12 +13,12 @@ Dieses Modul erzeugt auf Basis der IP-Symcon Struktur eine statische Dokumentati
 1. [Funktionsumfang](#1-funktionsumfang)
 2. [Voraussetzungen](#2-voraussetzungen)
 3. [Installation](#3-installation)
-4. [Hashtags](#3-hashtags)
-5. [Doku-betrachten](#4-doku-betrachten)
-6. [Screenshots](#4-screenshots)
-7. [PHP Kommandos](#7php-kommandos)
-8. [Todo](#4-todo)
-9. [Aufmerksamkeit](#8-aufmerksamkeit)
+4. [Hashtags](#4-hashtags)
+5. [Doku-betrachten](#5-doku-betrachten)
+6. [Screenshots](#6-screenshots)
+7. [PHP Kommandos](#7-php-kommandos)
+8. [Todo](#8-todo)
+9. [Aufmerksamkeit](#9-aufmerksamkeit)
 
 
 ### 1. Funktionsumfang
@@ -28,12 +33,13 @@ Dieses Modul erzeugt auf Basis der IP-Symcon Struktur eine statische Dokumentati
 * Pro Objekt wird eine Detailseite (./details/ObjectId.md) erzeugt die von der Übersichtsseite aus verlinkt wird.
 * Die Übersichtsseite enthält tabellarisch folgende Informationen
     * Header
+    * Allgemeine Benutzerspezifische Angaben (Inhalt aus einer IPS Variable)
     * Allgemeine IPS Informationen
     * Erweitere IPS Einstellungen
     * Logische Gruppen pro #Tag mit Auflistung der einzelnen zugehörigen Objekttypen
     * Footer
 * Defekte Scripte (broken) werden auf der Übersichtsseite durchgestrichen
-* Es kann mit #Hashtags in den Objektbeschreibungen gearbeitet werden. Damit werden Objekte nach Tags gruppiert angezeigt (bspw. werden Scripte, Variablen, Instanzen, etc. #Wohnzimmer #Beleuchtung) entsprechend gruppiert angezeigt. Die Hashtags können in den tabellarischen Übersichten ausgefiltert werden.
+* Es kann mit #Hashtags in den Objektbeschreibungen gearbeitet werden. Damit werden Objekte nach Tags gruppiert angezeigt (bspw. werden Scripte, Variablen, Instanzen, etc. #Wohnzimmer #Beleuchtung) entsprechend gruppiert angezeigt.
 * Über eine TextBox Variable können entweder statische oder dynamische Inhalte in den Kopf der Doku geschrieben werden. Bspw.: Erklärender Text für jemanden der die Doku sieht und vielleicht nicht mit den Details der Haustechnik vertraut ist. Alternativ kann die Variable auch durch Skriptbefüllung aktuelle Informationen die im Kopf der Doku stehen sollen anzeigen.
 * Es werden einige PHP Funktionen zur Einbindung in eigene Skripte angeboten (u.a. eine Logik um rekursiv die ObjectInfo zu beschreiben): Siehe [PHP-Befehlsreferenz](#7-php-befehlsreferenz)
 
@@ -46,58 +52,56 @@ Dieses Modul erzeugt auf Basis der IP-Symcon Struktur eine statische Dokumentati
 > Bei kommerzieller Nutzung (z.B. als Errichter oder Integrator) wenden Sie sich bitte an den Autor.
 
 * Die Instanz "SymDoc" anlegen
-![Instanz anlegen](./symdocAddInstance.png)
+![Instanz anlegen](./screenshots/symdocAddInstance.png)
 * Das Ausgabeverzeichnis der Doku angeben (der Ordner muss bereits existieren).
-![Instanz konfigurieren](./symdocConfiguration.png)
+![Instanz konfigurieren](./screenshots/symdocConfiguration.png)
 
-### 3. Hashtags
-In der Beschreibung (ObjectInfo) von Objekten (egal welchen Typs) kann neben dem Beschreibungstext noch mit Hashtags gearbeitet werden.
+### 4. Hashtags
+In der Beschreibung (ObjectInfo) von Objekten (egal welchen Typs) kann neben dem Beschreibungstext noch mit Hashtags (bspw. #Wohnzimmer, #Beleuchtung) gearbeitet werden.
 
-Durch die Nutzung von Hashtags (#) kann eine ganz individuelle Struktur aufbebaut werden.
-
-#### Beispiel einer ObjectInfo:
-> Dieses Skript schaltet die Wohnzimmerbeleuchtung bei Sonnenuntergang ein. #Beleuchtung #Todo #Visu
-
-Auf der Übersichtsseite würde dieses Script nun logisch in drei Gruppen auftauchen (Beleuchtung, Todo und Visu). Somit kann jedes IPS Objekt beliebig vielen logischen Gruppen zugeordnet werden.
+Beispiel einer Objekt-Info: "Dieses Skript schaltet das #Licht im #Wohnzimmer bei #Sonnenuntergang ein wenn der #TV läuft".
+Dieses Objekt würde jetzt auf der Übersichtsseite der Dokumentation unter den Gruppen "Licht", "Wohnzimmer", "Sonnenuntergang" und "TV" auftauchen.
+Wenn man also diverse Objekte (Variablen, Skripte, Medien, etc.) mit gleichen Tags verwendet entsteht daraus in der Übersichtsseite eine logische Gruppierung. Somit kann man bspw. schnell einen Überblick der Objekte für die Beleuchtung zu bekommen.
 
 ### 4. Doku erstellen
+> ACHTUNG: Je nach Größe der IP-Symcon Umgebung und der verwendeten Hardware kann die Erzeugung der Dokumentation einige Momente dauern.
 * Auf der Modul Konfigurationsseite durch Klick auf "Symcon Struktur dokumentieren".
 * Per PHP Codeaufruf: SymDoc_WriteMd(Id);    
 
 Im konfigurierten Ausgabeverzeichnis wird ein Unterverzeichnis (aktuelles Datum) angelegt. Darunter wird die Dokumentation erzeugt.
 
-Auf der Übersichtsseite werden die abfragbaren Informationen tabellarisch aufgelistet. Zusätzlich wird das Feld "ObjectInfo" angezeigt, somit empfiehlt es sich auch (gerade bei wichtigen Objekten) einen zusätzlichen Beschreibungstext einzugeben.
+Auf der Übersichtsseite werden die abfragbaren Informationen tabellarisch aufgelistet. Zusätzlich wird das Feld "ObjectInfo" angezeigt, somit empfiehlt es sich (gerade bei wichtigen Objekten) einen zusätzlichen Beschreibungstext einzugeben.
 
-### 4. Doku betrachten
+### 5. Doku betrachten
 Es gibt mehrere Möglichkeiten MD-Dateien zu betrachten.
 * Browser Plugin (bspw. Firefox Plugin: Markdown Viewer Webext)
 * Texteditor/Plugin (Atom, Notepad++, Visual Studio Code)
 * Eigenständige MD-Betrachter
 
-## 5. Screenshots
+## 6. Screenshots
 Da Bilder bekanntlich mehr sagen als Worte sind hier einige Screenshots.
 
-### 5.1 Screenshots aus der IPS Webconsole
-![](./objectTreeOverview.png)
-![](./addEventWithConditions.png)
-![](./addScriptBroken.png)
-![](./addScriptWorking.png)
-![](./addVarLogged.png)
+### 6.1 Screenshots aus der IPS Webconsole
+![](./screenshots/objectTreeOverview.png)
+![](./screenshots/addEventWithConditions.png)
+![](./screenshots/addScriptBroken.png)
+![](./screenshots/addScriptWorking.png)
+![](./screenshots/addVarLogged.png)
 
-### 5.2 Screenshots aus generierter Doku
-![](./symdocOverviewHeader.png)
-![](./symdocOverviewTocContent.png)
-![](./symdocScript.png)
-![](./symdocEvent.png)
-![](./symdocOverviewUntagged.png)
+### 6.2 Screenshots aus der generierten Dokumentation
+![](./screenshots/symdocOverviewHeader.png)
+![](./screenshots/symdocOverviewTocContent.png)
+![](./screenshots/symdocScript.png)
+![](./screenshots/symdocEvent.png)
+![](./screenshots/symdocOverviewUntagged.png)
 
 
-### PHP Kommandos
+### 7. PHP Kommandos
 
 ```php
 <?
 
-$symDocInstance = 52912;
+$symDocInstance = <Id>;
 
 // Erzeugt die Dokumentation
 SymDoc_WriteMd($symDocInstance);
@@ -112,26 +116,24 @@ SymDoc_WriteRecursiveObjInfo($symDocInstance,<ParentId>,"Das ist die Beschreibun
 ?>
 ```
 
-### 4. Todo
+### 8. Todo
 Es gibt noch einige offene Themen
-* | (Pipe) Zeichen im Objektnamen maskieren, damit Tabelle nicht verhagelt wird
+* | (Pipe) Zeichen im Objektnamen maskieren, damit Tabelle optisch nicht verzerrt wird
 * Dubletten aus Referenztabellen rausfiltern
-* Ereignisdetailseite  verbessern
-    * (zykl. Ereignisse) komplexe Einstellungsmöglichkeiten
-    * (Wochenplan) komplexe Zeitpläne
+* Ereignisdetailseite verbessern
+    * (zykl. Ereignisse): Komplexe Einstellungsmöglichkeiten
+    * (Wochenplan): Komplexe Zeitpläne
 * Tabellen sortieren (nach konfigurierbarer Spalte)
-* Einen PDF Export anbieten
-* Export Verzeichnis auf eine Netzwerkfreigabe schreiben
-* Ladekringel beim Starten der Doku aus Konfigurationsformular
-* Ggf. im Script den PHP Timeout hochsetzen
-* Konfigurationsformular (SelectDir statt SelectFile - gibts die Möglichkeit)
+* PDF Export
+* Export Verzeichnis auf eine Netzwerkfreigabe
+* Ladekringel beim Starten der Doku aus Konfigurationsformular, damit ersichtlich ist, dass die Doku Erzeugung noch läuft
+* Eventuelle PHP Timeouts berücksichtigen
+* Konfigurationsformular (SelectDir statt SelectFile - gibts die Möglichkeit?)
 * Problem falls ModulId bei Instanzen nicht funktioniert (aktuell auskommentiert)
-* Umgang mit PHP Timeouts bei größeren Umgebungen
 
 
-### Aufmerksamkeit
-Die Erstellung dieses Moduls hat mich ziemlich viel Zeit, Arbeit, Schweiß und vor allem Nerven gekostet!
+### 9. Aufmerksamkeit
+Die Erstellung dieses Moduls hat mich viel Zeit, Arbeit, Schweiß und vor allem Nerven gekostet!
 Für die nicht kommzerielle Nutzung ist es kostenlos. Feedback (Lob, Kritik, Anregungen, etc.) ist gerne im IPS Forum gesehen
-
 
 thorsten9
