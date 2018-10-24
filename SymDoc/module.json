@@ -1,0 +1,14 @@
+{
+    "id": "{a17928a4-3259-4e11-bbfc-e187ec16517b}",
+    "name": "SymDoc",
+    "type": 0,
+    "vendor": "Thorsten Mueller",
+    "aliases": 
+    [
+        "SymDoc"
+    ],
+    "parentRequirements": [],
+    "childRequirements": [],
+    "implemented": [],
+    "prefix": "SymDoc"
+}

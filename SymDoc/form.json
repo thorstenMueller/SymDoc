@@ -1,0 +1,89 @@
+{
+  "elements": [
+    {
+      "type": "Label",
+      "caption": "This module generates a md based documentation of your symcon installation.\nTo view md files a browser plugin or good text editor is recommended."
+    },
+    {
+      "type": "ValidationTextBox",
+      "name": "outputFolder",
+      "caption": "Output folder for md files"
+    },
+    {
+      "type": "CheckBox",
+      "name": "scriptInclude",
+      "caption": "include script content in documentation"
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "settings for overview page",
+      "items": [
+        {
+          "type": "CheckBox",
+          "name": "overviewPrefixText",
+          "caption": "include individual prefix text in overview"
+        },
+        {
+          "type": "CheckBox",
+          "name": "overviewGeneralInfos",
+          "caption": "include general informations (version, path, platform, ...) of symcon installation"
+        },
+        {
+          "type": "CheckBox",
+          "name": "overviewExtProperties",
+          "caption": "include extended properties of symcon installation (backup count, LogfileVerbose, ...)"
+        },
+        {
+          "type": "CheckBox",
+          "name": "overviewScripts",
+          "caption": "include script objects"
+        },
+        {
+          "type": "CheckBox",
+          "name": "overviewStrikeBrokenScripts",
+          "caption": "strike out broken scripts"
+        },
+        {
+          "type": "CheckBox",
+          "name": "overviewVars",
+          "caption": "include variable objects"
+        },
+        {
+          "type": "CheckBox",
+          "name": "overviewLinks",
+          "caption": "include link objects"
+        },
+        {
+          "type": "CheckBox",
+          "name": "overviewEvent",
+          "caption": "include events"
+        },
+        {
+          "type": "CheckBox",
+          "name": "overviewInstances",
+          "caption": "include instances"
+        },
+        {
+          "type": "CheckBox",
+          "name": "overviewMedia",
+          "caption": "include media objects"
+        },
+        {
+          "type": "CheckBox",
+          "name": "overviewRemoveDescTags",
+          "caption": "remove tags from description"
+        }
+      ]
+    },
+    {
+      "type": "Button",
+      "caption": "Document symcon structure",
+      "onClick": "SymDoc_WriteMd($id)"
+    },
+    {
+      "type": "Button",
+      "caption": "List used tags",
+      "onClick": "SymDoc_ListTags($id)"
+    }
+  ]
+}
