@@ -6,7 +6,7 @@
   * @author Thorsten Mueller <MrThorstenM (at) gmx.net> / thorsten9
   * @since 5.0.0
   *
-  * this module is offered “as-is”, without warranty, and disclaiming liability for damages resulting from using the module.
+  * i provide this module as it is, without any kind of warranty, and without any responsibility for damages from using this module.
   *
   */
 
@@ -588,7 +588,7 @@
                             }
                         }
 
-                        if (($typeName == "VARIABLE") && ($this->ReadPropertyBoolean("overviewVars"))) {
+                        if (($typeName == $this->Translate("VARIABLE")) && ($this->ReadPropertyBoolean("overviewVars"))) {
                             $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
                             $text .= "| Id";
                             $text .= " | " . $this->Translate("name and location");
@@ -617,7 +617,7 @@
                             }
                         }
 
-                        if (($typeName == "LINK") && ($this->ReadPropertyBoolean("overviewLinks"))) {
+                        if (($typeName == $this->Translate("LINK")) && ($this->ReadPropertyBoolean("overviewLinks"))) {
                             $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
                             $text .= "| Id";
                             $text .= " | " . $this->Translate("name and location");
@@ -638,7 +638,7 @@
                         }
 
 
-                        if (($typeName == "EVENT") && ($this->ReadPropertyBoolean("overviewEvent"))) {
+                        if (($typeName == $this->Translate("EVENT")) && ($this->ReadPropertyBoolean("overviewEvent"))) {
                             $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
                             $text .= "| Id";
                             $text .= " | " . $this->Translate("name and location");
@@ -666,7 +666,7 @@
                             }
                         }
 
-                        if (($typeName == "INSTANCE") && ($this->ReadPropertyBoolean("overviewInstances"))) {
+                        if (($typeName == $this->Translate("INSTANCE")) && ($this->ReadPropertyBoolean("overviewInstances"))) {
                             $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
                             $text .= "| Id";
                             $text .= " | " . $this->Translate("name and location");
@@ -684,7 +684,7 @@
                         }
 
 
-                        if (($typeName == "MEDIA") && ($this->ReadPropertyBoolean("overviewMedia"))) {
+                        if (($typeName == $this->Translate("MEDIA")) && ($this->ReadPropertyBoolean("overviewMedia"))) {
                             $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
                             $text .= "| Id";
                             $text .= " | " . $this->Translate("name and location");
