@@ -88,19 +88,25 @@
          */
         private function setConsts()
         {
+            $this->SendDebug(__FUNCTION__, "Ermittle Id vom UtilControl und Archiv", 0);
             $this->ipsUtilControlId = IPS_GetInstanceListByModuleID("{B69010EA-96D5-46DF-B885-24821B8C8DBD}")[0];
             $this->ipsArchiveControlId = IPS_GetInstanceListByModuleID("{43192F0B-135B-4CE7-A0A7-1475603F3060}")[0];
+            $this->SendDebug(__FUNCTION__, "UtilControl: " . $this->ipsUtilControlId . " --- Archiv: " . $this->ipsArchiveControlId, 0);
 
             // Common constants
             $dateTime = date("Y-m-d");
+            $this->SendDebug(__FUNCTION__, "Ermittle Verzeichnisse fuer Uebersicht und Details", 0);
             $this->outputFolderOverview = $this->ReadPropertyString("outputFolder") . "/" . $dateTime;
             $this->outputFolderDetails = $this->outputFolderOverview . "/" . "details";
+            $this->SendDebug(__FUNCTION__, "Ausgabe (Uebersicht): " . $this->outputFolderOverview . " --- Ausgabe (Details): " . $this->outputFolderDetails, 0);
 
             // Get IPS snapshot
+            $this->SendDebug(__FUNCTION__, "IPS Snapshot abfragen", 0);
             $tmp = utf8_encode(IPS_GetSnapshot());
             $this->ipsSnapshot = json_decode($tmp, true);
 
             // Set object types
+            $this->SendDebug(__FUNCTION__, "Setze ipsObjectType", 0);
             array_push($this->ipsObjectType, $this->Translate('category'));
             array_push($this->ipsObjectType, $this->Translate('instance'));
             array_push($this->ipsObjectType, $this->Translate('variable'));
@@ -110,6 +116,7 @@
             array_push($this->ipsObjectType, $this->Translate('link'));
 
             // Set event types
+            $this->SendDebug(__FUNCTION__, "Setze ipsEventCyclingTime", 0);
             array_push($this->ipsEventCyclingTime, $this->Translate('daily'));
             array_push($this->ipsEventCyclingTime, $this->Translate('once'));
             array_push($this->ipsEventCyclingTime, $this->Translate('daily'));
@@ -118,11 +125,13 @@
             array_push($this->ipsEventCyclingTime, $this->Translate('daily'));
         
             // Set event trigger
+            $this->SendDebug(__FUNCTION__, "Setze ipsEventType", 0);
             array_push($this->ipsEventType, $this->Translate('triggered'));
             array_push($this->ipsEventType, $this->Translate('cyclic'));
             array_push($this->ipsEventType, $this->Translate('weekplan'));
 
             // Set event trigger type details
+            $this->SendDebug(__FUNCTION__, "Setze ipsEventTriggerType", 0);
             array_push($this->ipsEventTriggerType, $this->Translate('on variable update'));
             array_push($this->ipsEventTriggerType, $this->Translate('on variable change'));
             array_push($this->ipsEventTriggerType, $this->Translate('on limit drop'));
@@ -130,6 +139,7 @@
             array_push($this->ipsEventTriggerType, $this->Translate('on defined value'));
 
             // Set event cyclic details
+            $this->SendDebug(__FUNCTION__, "Setze ipsEventCyclicDate", 0);
             array_push($this->ipsEventCyclicDate, $this->Translate('no date type'));
             array_push($this->ipsEventCyclicDate, $this->Translate('once'));
             array_push($this->ipsEventCyclicDate, $this->Translate('daily'));
@@ -138,12 +148,14 @@
             array_push($this->ipsEventCyclicDate, $this->Translate('yearly'));
 
             // Set variable types
+            $this->SendDebug(__FUNCTION__, "Setze ipsVariableType", 0);
             array_push($this->ipsVariableType, "Boolean");
             array_push($this->ipsVariableType, "Integer");
             array_push($this->ipsVariableType, "Float");
             array_push($this->ipsVariableType, "String");
 
             // Set event conditions on vars
+            $this->SendDebug(__FUNCTION__, "Setze ipsEventConditionVar", 0);
             array_push($this->ipsEventConditionVar, $this->Translate("equals"));
             array_push($this->ipsEventConditionVar, $this->Translate("unequal"));
             array_push($this->ipsEventConditionVar, $this->Translate("greater"));
@@ -151,9 +163,11 @@
             array_push($this->ipsEventConditionVar, $this->Translate("less"));
             array_push($this->ipsEventConditionVar, $this->Translate("less or equal"));
 
+            $this->SendDebug(__FUNCTION__, "Setze ipsEventConditionType", 0);
             array_push($this->ipsEventConditionType, $this->Translate("all conditions must apply"));
             array_push($this->ipsEventConditionType, $this->Translate("just one condition must apply"));
 
+            $this->SendDebug(__FUNCTION__, "Setze ipsInstanceStatus", 0);
             $this->ipsInstanceStatus[101] = $this->Translate("Instance will be created");
             $this->ipsInstanceStatus[102] = $this->Translate("Instance is active");
             $this->ipsInstanceStatus[103] = $this->Translate("Instance will be deleted");
@@ -161,7 +175,7 @@
             $this->ipsInstanceStatus[200] = $this->Translate("ups");
             $this->ipsInstanceStatus[201] = $this->Translate("ups");
         
-
+            $this->SendDebug(__FUNCTION__, "Setze ipsMediaType", 0);
             array_push($this->ipsMediaType, $this->Translate("form"));
             array_push($this->ipsMediaType, $this->Translate("image"));
             array_push($this->ipsMediaType, $this->Translate("sound"));
@@ -180,8 +194,12 @@
           */
         private function createScriptFiles()
         {
+            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Skript Detail Seiten", 0);
             $scriptList = IPS_GetScriptList();
+
+            $this->SendDebug(__FUNCTION__, count($scriptList) . " Skripte werden dokumentiert", 0);
             foreach ($scriptList as $value) {
+                $this->SendDebug(__FUNCTION__, "SkriptId " . $value . " wird dokumentiert", 0);
                 $text = $this->getObjectHeader($value);
 
                 $text .= "### " . $this->Translate("script information") . PHP_EOL;
@@ -194,6 +212,7 @@
 
                 file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
             }
+            $this->SendDebug(__FUNCTION__, "Erstellung der Skript Detailseiten abgeschlossen", 0);
         }
 
 
@@ -205,8 +224,12 @@
          */
         private function createVariableFiles()
         {
+            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Variablen Detail Seiten", 0);
+
             $varList = IPS_GetVariableList();
+            $this->SendDebug(__FUNCTION__, count($varList) . " Variablen werden dokumentiert", 0);
             foreach ($varList as $value) {
+                $this->SendDebug(__FUNCTION__, "VarId " . $value . " wird dokumentiert", 0);
                 $text = $this->getObjectHeader($value);
 
                 $text .= "### " . $this->Translate("variable information") . PHP_EOL;
@@ -217,6 +240,8 @@
 
                 file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
             }
+
+            $this->SendDebug(__FUNCTION__, "Erstellung der Variablen Detailseiten abgeschlossen", 0);
         }
 
    
@@ -228,8 +253,12 @@
          */
         private function createEventFiles()
         {
+            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Ereignis Detail Seiten", 0);
             $varList = IPS_GetEventList();
+            $this->SendDebug(__FUNCTION__, count($varList) . " Ereignisse werden dokumentiert", 0);
             foreach ($varList as $value) {
+                $this->SendDebug(__FUNCTION__, "EventId " . $value . " wird dokumentiert", 0);
+
                 $text = $this->getObjectHeader($value);
                 $event = IPS_GetEvent($value);
 
@@ -384,6 +413,8 @@
 
                 file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
             }
+
+            $this->SendDebug(__FUNCTION__, "Erstellung der Ereignis Detailseiten abgeschlossen", 0);
         }
 
         /**
@@ -393,8 +424,12 @@
          */
         private function createInstanceFiles()
         {
+            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Instanz Detail Seiten", 0);
             $instList = IPS_GetInstanceList();
+            $this->SendDebug(__FUNCTION__, count($instList) . " Instanzen werden dokumentiert", 0);
+
             foreach ($instList as $value) {
+                $this->SendDebug(__FUNCTION__, "InstId " . $value . " wird dokumentiert", 0);
                 $text = $this->getObjectHeader($value);
 
                 $text .= "### " . $this->Translate("instance information") . PHP_EOL;
@@ -419,6 +454,8 @@
 
                 file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
             }
+
+            $this->SendDebug(__FUNCTION__, "Erstellung der Instanz Detailseiten abgeschlossen", 0);
         }
 
         /**
@@ -428,8 +465,11 @@
          */
         private function createMediaFiles()
         {
+            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Media Detail Seiten", 0);
             $mediaList = IPS_GetMediaList();
+            $this->SendDebug(__FUNCTION__, count($mediaList) . " Medien werden dokumentiert", 0);
             foreach ($mediaList as $value) {
+                $this->SendDebug(__FUNCTION__, "MediaId " . $value . " wird dokumentiert", 0);
                 $text = $this->getObjectHeader($value);
 
                 $text .= "### " . $this->Translate("media information") . PHP_EOL;
@@ -443,6 +483,8 @@
                 
                 file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
             }
+
+            $this->SendDebug(__FUNCTION__, "Erstellung der Media Detailseiten abgeschlossen", 0);
         }
 
         // =========================
@@ -465,12 +507,14 @@
           */
         private function overviewHeader()
         {
+            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung des Overview Headers", 0);
             $text = "# " . $this->Translate("Symcon documentation:" . " " . IPS_GetName(0)) . PHP_EOL;
             $text .= "> " . sprintf($this->Translate("this documentation was created automatically on %s for machine %s"), date("d.m.Y H:i"), gethostname());
             $text .= PHP_EOL . PHP_EOL;
 
             if ($this->ReadPropertyBoolean("overviewPrefixText")) {
                 // Individual text info should be added
+                $this->SendDebug(__FUNCTION__, "Der benutzerdefinierte Text soll im Header angezeigt werden.", 0);
                 $text .= GetValue($this->GetIDForIdent("SymDoc_PrefixText")) . PHP_EOL . PHP_EOL;
             }
    
@@ -483,6 +527,7 @@
           */
         private function overviewFooter()
         {
+            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung des Overview Footers", 0);
             $text = PHP_EOL . PHP_EOL . "---" . PHP_EOL;
             $text .=  "> " . $this->Translate("this module is provided by thorsten9. Use on your own risk. No kind of warrenties!");
             $text .= PHP_EOL;
@@ -498,6 +543,7 @@
          */
         private function overviewExtProps()
         {
+            $this->SendDebug(__FUNCTION__, "Erzeuge Text fuer die erweiterten IPS Einstellungen", 0);
             $erg = $this->ipsSnapshot['options'];
             
             $text = "## " . $this->Translate("Symcon extended properties") . PHP_EOL;
@@ -518,6 +564,8 @@
          */
         private function overviewGenericInfo()
         {
+            $this->SendDebug(__FUNCTION__, "Erzeuge Text fuer die allgemeinen IPS Programmeinstellungen", 0);
+
             $text = "## " . $this->Translate("Generic program information") . PHP_EOL;
 
             $text .= "| " . $this->Translate("Key") . " | " . $this->Translate("Value") . " | " . PHP_EOL;
@@ -528,6 +576,7 @@
             $text .= "| " . $this->Translate("kernel revision") . " | " . IPS_GetKernelRevision() . " | " . PHP_EOL;
             $text .= "| " . $this->Translate("log directory") . " | " . IPS_GetLogDir() . " | " . PHP_EOL;
             
+            $this->SendDebug(__FUNCTION__, "Zeige das Ablaufdatum der Subscription an", 0);
             $subscriptionValidUntil = date("d.m.Y H:i", GetValue(IPS_GetObjectIDByIdent("LicenseSubscription", $this->ipsUtilControlId)));
             $text .= "| " . $this->Translate("subscription valid to") . " | " . $subscriptionValidUntil . " | " . PHP_EOL;
 
@@ -541,9 +590,12 @@
          */
         private function genOverviewByTag()
         {
+            $this->SendDebug(__FUNCTION__, "Erzeuge Text fuer die Uebersichtsseite gruppiert nach Tags", 0);
             $text = "";
             $tagArray = $this->tagList;
+
             foreach ($tagArray as $tagName => $value) {
+                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "'", 0);
                 $text .= PHP_EOL . "---" . PHP_EOL;
                 $text .= "## " . $tagName . PHP_EOL;
                 $text .= "> [" . $this->Translate("back to toc") . "](./index.md#" . strtolower($this->Translate("toc")). ")" . PHP_EOL . PHP_EOL;
@@ -551,6 +603,8 @@
                 $typeArray = $this->tagList[$tagName];
                 foreach ($typeArray as $typeName => $value2) {
                     if (is_array($this->tagList[$tagName][$typeName])) {
+                        $this->SendDebug(__FUNCTION__, $typeName . " in der Tag-Gruppe " . $tagName, 0);
+
                         if (($typeName == $this->Translate("SCRIPT")) && ($this->ReadPropertyBoolean("overviewScripts"))) {
                             $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
                             $text .= "| Id";
@@ -562,9 +616,11 @@
                             $text .= "| --- | --- | --- | --- | --- | --- |" . PHP_EOL;
     
                             foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
+                                $this->SendDebug(__FUNCTION__, "ID " . $value3 . " in Gruppe (" . $tagName . " --- " . $typeName . ") schreiben", 0);
                                 if ((IPS_GetScript($value3)['ScriptIsBroken']) && ($this->ReadPropertyBoolean("overviewStrikeBrokenScripts"))) {
                                     $tmpBrokenStart = "<del>";
                                     $tmpBrokenEnd = "</del>";
+                                    $this->SendDebug(__FUNCTION__, "Skript mit ID " . $value3 . " ist defekt", 0);
                                 } else {
                                     $tmpBrokenStart = "";
                                     $tmpBrokenEnd = "";
@@ -591,6 +647,7 @@
         
                             
                             foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
+                                $this->SendDebug(__FUNCTION__, "ID " . $value3 . " in Gruppe (" . $tagName . " --- " . $typeName . ") schreiben", 0);
                                 $text .= "| [" . $value3 . "](./details/" . $value3 . ".md)";
                                 $text .= "| " . IPS_GetLocation($value3);
                                 $text .= "| " . count(IPS_GetChildrenIDs($value3));
@@ -618,6 +675,7 @@
         
                             
                             foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
+                                $this->SendDebug(__FUNCTION__, "ID " . $value3 . " in Gruppe (" . $tagName . " --- " . $typeName . ") schreiben", 0);
                                 $text .= "| " . $value3;
                                 $text .= "| " . IPS_GetLocation($value3);
                                 $targetId = IPS_GetLink($value3)['TargetID'];
@@ -642,6 +700,7 @@
         
                             
                             foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
+                                $this->SendDebug(__FUNCTION__, "ID " . $value3 . " in Gruppe (" . $tagName . " --- " . $typeName . ") schreiben", 0);
                                 $text .= "| [" . $value3 . "](./details/" . $value3 . ".md)";
                                 $text .= "| " . IPS_GetLocation($value3);
                                 $text .= "| " . count(IPS_GetChildrenIDs($value3));
@@ -667,6 +726,7 @@
         
                             
                             foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
+                                $this->SendDebug(__FUNCTION__, "ID " . $value3 . " in Gruppe (" . $tagName . " --- " . $typeName . ") schreiben", 0);
                                 $text .= "| [" . $value3 . "](./details/" . $value3 . ".md)";
                                 $text .= "| " . IPS_GetLocation($value3);
                                 $text .= "| " . $this->ipsInstanceStatus[IPS_GetInstance($value3)['InstanceStatus']];
@@ -687,6 +747,7 @@
         
                             
                             foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
+                                $this->SendDebug(__FUNCTION__, "ID " . $value3 . " in Gruppe (" . $tagName . " --- " . $typeName . ") schreiben", 0);
                                 $text .= "| [" . $value3 . "](./details/" . $value3 . ".md)";
                                 $text .= "| " . IPS_GetLocation($value3);
                                 $text .= "| " . IPS_GetMedia($value3)['MediaFile'];
@@ -698,6 +759,9 @@
                     }
                 }
             }
+
+            $this->SendDebug(__FUNCTION__, "Overview Erzeugung nach Tags abgeschlossen", 0);
+
             return $text;
         }
 
@@ -712,11 +776,14 @@
          */
         private function createDir()
         {
+            $this->SendDebug(__FUNCTION__, "Pruefe ob Overview und Detail Verzeichnisse existieren und lege ggf. an", 0);
             if (!is_dir($this->outputFolderOverview)) {
+                $this->SendDebug(__FUNCTION__, "Overview Verzeichnis anlegen: " . $this->outputFolderOverview, 0);
                 mkdir($this->outputFolderOverview);
             }
 
             if (!is_dir($this->outputFolderDetails)) {
+                $this->SendDebug(__FUNCTION__, "Detail Verzeichnis anlegen: " . $this->outputFolderOverview, 0);
                 mkdir($this->outputFolderDetails);
             }
         }
@@ -744,35 +811,59 @@
          */
         public function WriteMd()
         {
+            $this->SendDebug(__FUNCTION__, "Starte Doku Erzeugung", 0);
             $this->setConsts();
             $this->createDir();
 
+            //IPS_Sleep(80000);
+
             // Generate all detail files
+            $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Vars)", 0);
             $this->createVariableFiles();
+
+            $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Scripts)", 0);
             $this->createScriptFiles();
+
+            $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Events)", 0);
             $this->createEventFiles();
+
+            $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Instance)", 0);
             $this->createInstanceFiles();
+
+            $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Media)", 0);
             $this->createMediaFiles();
 
             // Prepare array for overview and generate page
+            $this->SendDebug(__FUNCTION__, "Start genOverviewArray", 0);
             $this->genOverviewArray();
             $text = "";
+
+            $this->SendDebug(__FUNCTION__, "Start overviewHeader", 0);
             $text .= $this->overviewHeader();
             
             if ($this->ReadPropertyBoolean("overviewGeneralInfos")) {
+                $this->SendDebug(__FUNCTION__, "Start overviewGenericInfo", 0);
                 $text .= $this->overviewGenericInfo();
             }
             
             if ($this->ReadPropertyBoolean("overviewExtProperties")) {
+                $this->SendDebug(__FUNCTION__, "Start overviewExtProperties", 0);
                 $text .= $this->overviewExtProps();
             }
             
+            $this->SendDebug(__FUNCTION__, "Start genToc", 0);
             $text .= $this->genToc();
+
+            $this->SendDebug(__FUNCTION__, "Start genOverviewByTag", 0);
             $text .= $this->genOverviewByTag();
 
+            $this->SendDebug(__FUNCTION__, "Start overviewFooter", 0);
             $text .= $this->overviewFooter();
+
+            $this->SendDebug(__FUNCTION__, "Overview Seite als UTF8 speichern", 0);
             file_put_contents($this->outputFolderOverview . "/index.md", utf8_decode($text) . PHP_EOL);
 
+            $this->SendDebug(__FUNCTION__, "Setze das Datum der letzten Erstellung der Doku", 0);
             SetValue($this->GetIDForIdent("SymDoc_LastExec"), date("d.m.Y H:i"));
             echo $this->Translate("Documentation has been created");
         }
@@ -827,6 +918,8 @@
         private function getObjectHeader($id)
         {
             $erg = IPS_GetObject($id);
+            $this->SendDebug(__FUNCTION__, "Erzeuge Objekt Header fuer ID " . $id, 0);
+
 
             $text = "# " . $this->ipsObjectType[$erg['ObjectType']] . ": ";
             $text .= IPS_GetName($id) . " (" . $id . ")" . PHP_EOL;
@@ -871,6 +964,7 @@
 
         private function genToc()
         {
+            $this->SendDebug(__FUNCTION__, "Erzeuge Inhaltsverzeichnis", 0);
             $tocObject = PHP_EOL . "# " . $this->Translate("toc") . PHP_EOL;
             $tocObject .= "<details><summary>" . $this->Translate("toc of symcon objects") . "</summary>" . PHP_EOL;
             $tocObject .= "<p>" . PHP_EOL . PHP_EOL;
@@ -893,6 +987,7 @@
          */
         private function getRefsFromId($id)
         {
+            $this->SendDebug(__FUNCTION__, "Suche Referenzen fuer ID " . $id . " im UtilControl Modul", 0);
             $erg = UC_FindReferences($this->ipsUtilControlId, $id);
 
             $text = "### " . $this->Translate("referenced objects") . PHP_EOL;
@@ -921,6 +1016,7 @@
          */
         private function getLinksFromId($id)
         {
+            $this->SendDebug(__FUNCTION__, "Frage Ziel von Link mit ID " . $id . " ab", 0);
             $links = array();
             $erg = IPS_GetLinkList();
             foreach ($erg as $linkId) {
@@ -943,6 +1039,7 @@
          */
         private function getTagFromText($text)
         {
+            $this->SendDebug(__FUNCTION__, "Durchsuche Text '" . $text . "' nach Tags", 0);
             $erg = array();
 
             if (strlen($text) == 0) {
@@ -973,6 +1070,7 @@
          */
         private function removeTagsFromText($text)
         {
+            $this->SendDebug(__FUNCTION__, "Entferne Tags aus Text '" . $text . "'", 0);
             if ($this->ReadPropertyBoolean("overviewRemoveDescTags")) {
                 return preg_replace("/#(\w+)/", "", $text);
             } else {
@@ -987,6 +1085,7 @@
          */
         private function genOverviewArray()
         {
+            $this->SendDebug(__FUNCTION__, "Start genOverviewArray", 0);
             foreach (IPS_GetObjectList() as $o) {
                 $tmp1 = IPS_GetObject($o);
 
