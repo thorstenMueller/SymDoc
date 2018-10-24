@@ -63,16 +63,7 @@
             IPS_SetInfo($idLastExec, "Zeitpunkt wann die letzte Doku mit #SymDoc erzeugt wurde.");
             $idPrefixVar = $this->RegisterVariableString("SymDoc_PrefixText", $this->Translate("individual prefix text"), "~TextBox", 0);
             IPS_SetInfo($idLastExec, "Variable für individuellen Text im Kopf der erzeugten #SymDoc Doku.");
-            $idActionScript = IPS_CreateScript(0);
-            IPS_SetParent($idActionScript, $idPrefixVar);
-            IPS_SetName($idActionScript, $this->Translate("SymDoc Action Script"));
-            $scriptContent = "<? " . PHP_EOL;
-            $scriptContent .= 'SetValue($_IPS["VARIABLE"], $_IPS["VALUE"]);' . PHP_EOL;
-            $scriptContent .= "?>";
-
-            IPS_SetScriptContent($idActionScript, $scriptContent);
-            IPS_SetVariableCustomAction($idPrefixVar, $idActionScript);
-            IPS_SetHidden($idActionScript, true);
+            $this->EnableAction("SymDoc_PrefixText");
         }
  
         public function ApplyChanges()
@@ -1007,6 +998,26 @@
                         $this->tagList[$tag][strtoupper($type)][] = $o;
                     }
                 }
+            }
+        }
+
+
+        /**
+         * RequestAction
+         *
+         * @param  mixed $Ident
+         * @param  mixed $Value
+         *
+         * @return void
+         */
+        public function RequestAction($Ident, $Value)
+        {
+            switch ($Ident) {
+                case "SymDoc_PrefixText":
+                    SetValue($this->GetIDForIdent("SymDoc_PrefixText"), $Value);
+                    break;
+                default:
+                    throw new Exception("Invalid ident");
             }
         }
     }
