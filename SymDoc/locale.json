@@ -11,8 +11,9 @@
             "Output folder for md files": "Ausgabeverzeichnis der MD-Dateien",
             "include script content in documentation": "Den Inhalt der Skripte mitdokumentieren",
             "settings for overview page": "Einstellungen für die Übersichtsseite",
+            "settings for detail pages": "Einstellungen für die Detailseiten",
             "include general informations (version, path, platform, ...) of symcon installation": "Allgemeine Programminformationen (Version, Pfad, Plattform, ...) mitdokumentieren",
-            "include extended properties of symcon installation (backup count, LogfileVerbose, ...)": "Erweitere Einstellungen (Backup Anzahl, Loglevel, ...) mitdokumentieren",
+            "include extended properties of symcon installation (backup count, LogfileVerbose, ...) --- MIGHT TAKE LONGER IN BIG INSTALLATIONS": "Erweitere Einstellungen (Backup Anzahl, Loglevel, ...) mitdokumentieren --- LANGE AUSFÜHRUNGSZEIT BEI GROßEN INSTALLATIONEN",
             "include script objects": "Skriptübersicht auf Übersichtsseite anzeigen",
             "strike out broken scripts": "Defekte Skripte in der Übersicht durchstreichen",
             "include variable objects": "Variablenübersicht auf Übersichtsseite anzeigen",
@@ -141,7 +142,13 @@
             "INSTANCE": "INSTANZ",
             "MEDIA": "MEDIUM",
             "child elements": "Untergeordnete Objekte",
-            "Documentation has been created": "Die Dokumentation wurde erstellt"
+            "Documentation has been created": "Die Dokumentation wurde erstellt",
+            "include list of objects references in object details  --- MIGHT TAKE LONGER IN BIG INSTALLATIONS": "Liste von Referenzobjekten in der Objekt Detailseite zeigen  --- LANGE AUSFÜHRUNGSZEIT BEI GROßEN INSTALLATIONEN",
+            "create detail pages for all variables": "Detailseiten für Variablen erzeugen",
+            "create detail pages for all scripts": "Detailseiten für Skripte erzeugen",
+            "create detail pages for all events": "Detailseiten für Ereignisse erzeugen",
+            "create detail pages for all instances": "Detailseiten für Instanzen erzeugen",
+            "create detail pages for all media": "Detailseiten für Medien erzeugen"
         }
     }
 }

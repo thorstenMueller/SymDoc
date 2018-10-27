@@ -10,6 +10,13 @@
   *
   */
 
+
+    /*
+    TODO
+    - Performantere Alternative zu UC_FindReferences
+    - IPS_GetSnapshot prüfen (ggf. ext. Properties anders abfragen)
+    */
+  
     // Klassendefinition
     class SymDoc extends IPSModule
     {
@@ -48,7 +55,7 @@
             $this->RegisterPropertyString("outputFolder", "");
             $this->RegisterPropertyBoolean("overviewPrefixText", true);
             $this->RegisterPropertyBoolean("overviewGeneralInfos", true);
-            $this->RegisterPropertyBoolean("overviewExtProperties", true);
+            $this->RegisterPropertyBoolean("overviewExtProperties", false);
             $this->RegisterPropertyBoolean("overviewScripts", true);
             $this->RegisterPropertyBoolean("overviewStrikeBrokenScripts", true);
             $this->RegisterPropertyBoolean("overviewVars", true);
@@ -56,8 +63,16 @@
             $this->RegisterPropertyBoolean("overviewEvent", true);
             $this->RegisterPropertyBoolean("overviewInstances", true);
             $this->RegisterPropertyBoolean("overviewMedia", true);
-            $this->RegisterPropertyBoolean("scriptInclude", true);
+            $this->RegisterPropertyBoolean("detailsScriptInclude", true);
             $this->RegisterPropertyBoolean("overviewRemoveDescTags", false);
+
+            $this->RegisterPropertyBoolean("detailsShowRefs", false);
+            $this->RegisterPropertyBoolean("detailsIncludeVarPages", true);
+            $this->RegisterPropertyBoolean("detailsIncludeScriptPages", true);
+            $this->RegisterPropertyBoolean("detailsIncludeEventPages", true);
+            $this->RegisterPropertyBoolean("detailsIncludeInstancePages", true);
+            $this->RegisterPropertyBoolean("detailsIncludeMediaPages", true);
+
             
             $idLastExec = $this->RegisterVariableString("SymDoc_LastExec", $this->Translate("last doc generation"), "~String", 0);
             IPS_SetInfo($idLastExec, "Zeitpunkt wann die letzte Doku mit #SymDoc erzeugt wurde.");
@@ -99,11 +114,6 @@
             $this->outputFolderOverview = $this->ReadPropertyString("outputFolder") . "/" . $dateTime;
             $this->outputFolderDetails = $this->outputFolderOverview . "/" . "details";
             $this->SendDebug(__FUNCTION__, "Ausgabe (Uebersicht): " . $this->outputFolderOverview . " --- Ausgabe (Details): " . $this->outputFolderDetails, 0);
-
-            // Get IPS snapshot
-            $this->SendDebug(__FUNCTION__, "IPS Snapshot abfragen", 0);
-            $tmp = utf8_encode(IPS_GetSnapshot());
-            $this->ipsSnapshot = json_decode($tmp, true);
 
             // Set object types
             $this->SendDebug(__FUNCTION__, "Setze ipsObjectType", 0);
@@ -191,28 +201,32 @@
           * Creates .md files for all SCRIPT OBJECTS in the "details" directory
           *
           * @return void
-          */
+        */
         private function createScriptFiles()
         {
             $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Skript Detail Seiten", 0);
+            $timeStart = microtime(true);
+
             $scriptList = IPS_GetScriptList();
 
             $this->SendDebug(__FUNCTION__, count($scriptList) . " Skripte werden dokumentiert", 0);
             foreach ($scriptList as $value) {
-                $this->SendDebug(__FUNCTION__, "SkriptId " . $value . " wird dokumentiert", 0);
                 $text = $this->getObjectHeader($value);
 
                 $text .= "### " . $this->Translate("script information") . PHP_EOL;
                 $text .= "* " . $this->Translate("script file") . ": " . IPS_GetScript($value)['ScriptFile'] . PHP_EOL . PHP_EOL;
                 
-                if ($this->ReadPropertyBoolean("scriptInclude")) {
+                if ($this->ReadPropertyBoolean("detailsScriptInclude")) {
                     $text .= "### " . $this->Translate("script content") . PHP_EOL;
                     $text .= "```php" . PHP_EOL . IPS_GetScriptContent($value) . PHP_EOL . "```" . PHP_EOL;
                 }
 
                 file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
             }
-            $this->SendDebug(__FUNCTION__, "Erstellung der Skript Detailseiten abgeschlossen", 0);
+
+            $timeStop = microtime(true);
+            $dauer = round(($timeStop - $timeStart), 2);
+            $this->SendDebug(__FUNCTION__, "Erstellung der Skript Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
         }
 
 
@@ -225,11 +239,11 @@
         private function createVariableFiles()
         {
             $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Variablen Detail Seiten", 0);
+            $timeStart = microtime(true);
 
             $varList = IPS_GetVariableList();
             $this->SendDebug(__FUNCTION__, count($varList) . " Variablen werden dokumentiert", 0);
             foreach ($varList as $value) {
-                $this->SendDebug(__FUNCTION__, "VarId " . $value . " wird dokumentiert", 0);
                 $text = $this->getObjectHeader($value);
 
                 $text .= "### " . $this->Translate("variable information") . PHP_EOL;
@@ -241,7 +255,9 @@
                 file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
             }
 
-            $this->SendDebug(__FUNCTION__, "Erstellung der Variablen Detailseiten abgeschlossen", 0);
+            $timeStop = microtime(true);
+            $dauer = round(($timeStop - $timeStart), 2);
+            $this->SendDebug(__FUNCTION__, "Erstellung der Variablen Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
         }
 
    
@@ -254,11 +270,11 @@
         private function createEventFiles()
         {
             $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Ereignis Detail Seiten", 0);
+            $timeStart = microtime(true);
+
             $varList = IPS_GetEventList();
             $this->SendDebug(__FUNCTION__, count($varList) . " Ereignisse werden dokumentiert", 0);
             foreach ($varList as $value) {
-                $this->SendDebug(__FUNCTION__, "EventId " . $value . " wird dokumentiert", 0);
-
                 $text = $this->getObjectHeader($value);
                 $event = IPS_GetEvent($value);
 
@@ -414,7 +430,10 @@
                 file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
             }
 
-            $this->SendDebug(__FUNCTION__, "Erstellung der Ereignis Detailseiten abgeschlossen", 0);
+            $timeStop = microtime(true);
+            $dauer = round(($timeStop - $timeStart), 2);
+
+            $this->SendDebug(__FUNCTION__, "Erstellung der Ereignis Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
         }
 
         /**
@@ -425,11 +444,12 @@
         private function createInstanceFiles()
         {
             $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Instanz Detail Seiten", 0);
+            $timeStart = microtime(true);
+
             $instList = IPS_GetInstanceList();
             $this->SendDebug(__FUNCTION__, count($instList) . " Instanzen werden dokumentiert", 0);
 
             foreach ($instList as $value) {
-                $this->SendDebug(__FUNCTION__, "InstId " . $value . " wird dokumentiert", 0);
                 $text = $this->getObjectHeader($value);
 
                 $text .= "### " . $this->Translate("instance information") . PHP_EOL;
@@ -455,7 +475,9 @@
                 file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
             }
 
-            $this->SendDebug(__FUNCTION__, "Erstellung der Instanz Detailseiten abgeschlossen", 0);
+            $timeStop = microtime(true);
+            $dauer = round(($timeStop - $timeStart), 2);
+            $this->SendDebug(__FUNCTION__, "Erstellung der Instanz Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
         }
 
         /**
@@ -466,10 +488,11 @@
         private function createMediaFiles()
         {
             $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Media Detail Seiten", 0);
+            $timeStart = microtime(true);
+
             $mediaList = IPS_GetMediaList();
             $this->SendDebug(__FUNCTION__, count($mediaList) . " Medien werden dokumentiert", 0);
             foreach ($mediaList as $value) {
-                $this->SendDebug(__FUNCTION__, "MediaId " . $value . " wird dokumentiert", 0);
                 $text = $this->getObjectHeader($value);
 
                 $text .= "### " . $this->Translate("media information") . PHP_EOL;
@@ -484,7 +507,10 @@
                 file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
             }
 
-            $this->SendDebug(__FUNCTION__, "Erstellung der Media Detailseiten abgeschlossen", 0);
+            $timeStop = microtime(true);
+            $dauer = round(($timeStop - $timeStart), 2);
+
+            $this->SendDebug(__FUNCTION__, "Erstellung der Media Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
         }
 
         // =========================
@@ -541,18 +567,24 @@
          *
          * @return String the md formatted table text with IPS extended properties
          */
-        private function overviewExtProps()
+        public function overviewExtProps()
         {
-            $this->SendDebug(__FUNCTION__, "Erzeuge Text fuer die erweiterten IPS Einstellungen", 0);
-            $erg = $this->ipsSnapshot['options'];
-            
+            // TODO: Ggf. anders abfragen außer IPS_GetSnapshot
+
             $text = "## " . $this->Translate("Symcon extended properties") . PHP_EOL;
+            $text .= "> TODO" . PHP_EOL;
+
+            /*
+            $tmp = json_decode(utf8_encode(IPS_GetSnapshot()), true);
+            $erg = $tmp['options'];
+
             $text .= "| " . $this->Translate("Key") . " | " . $this->Translate("Value") . " | " . PHP_EOL;
             $text .= "| --- | --- |" . PHP_EOL;
-            
+
             foreach ($erg as $key => $value) {
                 $text .= "| " . $key . " | " . $value . " | " . PHP_EOL;
             }
+            */
 
             return $text;
         }
@@ -591,6 +623,7 @@
         private function genOverviewByTag()
         {
             $this->SendDebug(__FUNCTION__, "Erzeuge Text fuer die Uebersichtsseite gruppiert nach Tags", 0);
+            $timeStart = microtime(true);
             $text = "";
             $tagArray = $this->tagList;
 
@@ -598,29 +631,26 @@
                 $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "'", 0);
                 $text .= PHP_EOL . "---" . PHP_EOL;
                 $text .= "## " . $tagName . PHP_EOL;
-                $text .= "> [" . $this->Translate("back to toc") . "](./index.md#" . strtolower($this->Translate("toc")). ")" . PHP_EOL . PHP_EOL;
                 
                 $typeArray = $this->tagList[$tagName];
                 foreach ($typeArray as $typeName => $value2) {
                     if (is_array($this->tagList[$tagName][$typeName])) {
-                        $this->SendDebug(__FUNCTION__, $typeName . " in der Tag-Gruppe " . $tagName, 0);
+                        $text .= "> [" . $this->Translate("back to toc") . "](./index.md#" . strtolower($this->Translate("toc")). ")" . PHP_EOL . PHP_EOL;
 
                         if (($typeName == $this->Translate("SCRIPT")) && ($this->ReadPropertyBoolean("overviewScripts"))) {
+                            $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (SCRIPT)", 0);
                             $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
                             $text .= "| Id";
                             $text .= " | " . $this->Translate("name and location");
                             $text .= " | " . $this->Translate("number of childs");
-                            $text .= " | " . $this->Translate("number of references");
                             $text .= " | " . $this->Translate("last execution");
                             $text .= " | " . $this->Translate("description") . PHP_EOL;
-                            $text .= "| --- | --- | --- | --- | --- | --- |" . PHP_EOL;
+                            $text .= "| --- | --- | --- | --- | --- |" . PHP_EOL;
     
                             foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
-                                $this->SendDebug(__FUNCTION__, "ID " . $value3 . " in Gruppe (" . $tagName . " --- " . $typeName . ") schreiben", 0);
                                 if ((IPS_GetScript($value3)['ScriptIsBroken']) && ($this->ReadPropertyBoolean("overviewStrikeBrokenScripts"))) {
                                     $tmpBrokenStart = "<del>";
                                     $tmpBrokenEnd = "</del>";
-                                    $this->SendDebug(__FUNCTION__, "Skript mit ID " . $value3 . " ist defekt", 0);
                                 } else {
                                     $tmpBrokenStart = "";
                                     $tmpBrokenEnd = "";
@@ -629,29 +659,26 @@
                                 $text .= "| [" . $tmpBrokenStart . $value3 . "](./details/" . $value3 . ".md)" . $tmpBrokenEnd;
                                 $text .= "| " . $tmpBrokenStart . IPS_GetLocation($value3) . $tmpBrokenEnd;
                                 $text .= "| " . $tmpBrokenStart . count(IPS_GetChildrenIDs($value3)) . $tmpBrokenEnd;
-                                $text .= "| " . $tmpBrokenStart . count(UC_FindReferences($this->ipsUtilControlId, $value3)) . $tmpBrokenEnd;
                                 $text .= "| " . $tmpBrokenStart . date("d.m.Y H:i", IPS_GetScript($value3)['ScriptExecuted']) . $tmpBrokenEnd;
                                 $text .= "| " . $tmpBrokenStart . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . $tmpBrokenEnd . PHP_EOL;
                             }
                         }
 
                         if (($typeName == $this->Translate("VARIABLE")) && ($this->ReadPropertyBoolean("overviewVars"))) {
+                            $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (VARIABLE)", 0);
                             $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
                             $text .= "| Id";
                             $text .= " | " . $this->Translate("name and location");
                             $text .= " | " . $this->Translate("number of childs");
-                            $text .= " | " . $this->Translate("number of references");
                             $text .= " | " . $this->Translate("archived");
                             $text .= " | " . $this->Translate("description") . PHP_EOL;
-                            $text .= "| --- | --- | --- | --- | --- | --- |" . PHP_EOL;
+                            $text .= "| --- | --- | --- | --- | --- |" . PHP_EOL;
         
                             
                             foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
-                                $this->SendDebug(__FUNCTION__, "ID " . $value3 . " in Gruppe (" . $tagName . " --- " . $typeName . ") schreiben", 0);
                                 $text .= "| [" . $value3 . "](./details/" . $value3 . ".md)";
                                 $text .= "| " . IPS_GetLocation($value3);
                                 $text .= "| " . count(IPS_GetChildrenIDs($value3));
-                                $text .= "| " . count(UC_FindReferences($this->ipsUtilControlId, $value3));
                                 $text .= "| ";
                                 if (AC_GetLoggingStatus($this->ipsArchiveControlId, $value3) == 1) {
                                     if (AC_GetAggregationType($this->ipsArchiveControlId, $value3) == 0) {
@@ -666,6 +693,7 @@
                         }
 
                         if (($typeName == $this->Translate("LINK")) && ($this->ReadPropertyBoolean("overviewLinks"))) {
+                            $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (LINK)", 0);
                             $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
                             $text .= "| Id";
                             $text .= " | " . $this->Translate("name and location");
@@ -675,7 +703,6 @@
         
                             
                             foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
-                                $this->SendDebug(__FUNCTION__, "ID " . $value3 . " in Gruppe (" . $tagName . " --- " . $typeName . ") schreiben", 0);
                                 $text .= "| " . $value3;
                                 $text .= "| " . IPS_GetLocation($value3);
                                 $targetId = IPS_GetLink($value3)['TargetID'];
@@ -688,23 +715,21 @@
 
 
                         if (($typeName == $this->Translate("EVENT")) && ($this->ReadPropertyBoolean("overviewEvent"))) {
+                            $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (EVENT)", 0);
                             $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
                             $text .= "| Id";
                             $text .= " | " . $this->Translate("name and location");
                             $text .= " | " . $this->Translate("number of childs");
-                            $text .= " | " . $this->Translate("number of references");
                             $text .= " | " . $this->Translate("event has conditions");
                             $text .= " | " . $this->Translate("event type");
                             $text .= " | " . $this->Translate("description") . PHP_EOL;
-                            $text .= "| --- | --- | --- | --- | --- | --- | --- |" . PHP_EOL;
+                            $text .= "| --- | --- | --- | --- | --- | --- |" . PHP_EOL;
         
                             
                             foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
-                                $this->SendDebug(__FUNCTION__, "ID " . $value3 . " in Gruppe (" . $tagName . " --- " . $typeName . ") schreiben", 0);
                                 $text .= "| [" . $value3 . "](./details/" . $value3 . ".md)";
                                 $text .= "| " . IPS_GetLocation($value3);
                                 $text .= "| " . count(IPS_GetChildrenIDs($value3));
-                                $text .= "| " . count(UC_FindReferences($this->ipsUtilControlId, $value3));
                                 
                                 $text .= "| ";
                                 if (count(IPS_GetEvent($value3)['EventConditions'])>0) {
@@ -717,6 +742,7 @@
                         }
 
                         if (($typeName == $this->Translate("INSTANCE")) && ($this->ReadPropertyBoolean("overviewInstances"))) {
+                            $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (INSTANCE)", 0);
                             $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
                             $text .= "| Id";
                             $text .= " | " . $this->Translate("name and location");
@@ -726,7 +752,6 @@
         
                             
                             foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
-                                $this->SendDebug(__FUNCTION__, "ID " . $value3 . " in Gruppe (" . $tagName . " --- " . $typeName . ") schreiben", 0);
                                 $text .= "| [" . $value3 . "](./details/" . $value3 . ".md)";
                                 $text .= "| " . IPS_GetLocation($value3);
                                 $text .= "| " . $this->ipsInstanceStatus[IPS_GetInstance($value3)['InstanceStatus']];
@@ -736,6 +761,7 @@
 
 
                         if (($typeName == $this->Translate("MEDIA")) && ($this->ReadPropertyBoolean("overviewMedia"))) {
+                            $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (MEDIA)", 0);
                             $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
                             $text .= "| Id";
                             $text .= " | " . $this->Translate("name and location");
@@ -747,7 +773,6 @@
         
                             
                             foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
-                                $this->SendDebug(__FUNCTION__, "ID " . $value3 . " in Gruppe (" . $tagName . " --- " . $typeName . ") schreiben", 0);
                                 $text .= "| [" . $value3 . "](./details/" . $value3 . ".md)";
                                 $text .= "| " . IPS_GetLocation($value3);
                                 $text .= "| " . IPS_GetMedia($value3)['MediaFile'];
@@ -760,7 +785,9 @@
                 }
             }
 
-            $this->SendDebug(__FUNCTION__, "Overview Erzeugung nach Tags abgeschlossen", 0);
+            $timeStop = microtime(true);
+            $dauer = round(($timeStop - $timeStart), 2);
+            $this->SendDebug(__FUNCTION__, "Overview Erzeugung nach Tags nach " . $dauer . " Sekunden abgeschlossen", 0);
 
             return $text;
         }
@@ -815,23 +842,32 @@
             $this->setConsts();
             $this->createDir();
 
-            //IPS_Sleep(80000);
-
             // Generate all detail files
-            $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Vars)", 0);
-            $this->createVariableFiles();
+            if ($this->ReadPropertyBoolean("detailsIncludeVarPages")) {
+                $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Vars)", 0);
+                $this->createVariableFiles();
+            }
 
-            $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Scripts)", 0);
-            $this->createScriptFiles();
+            if ($this->ReadPropertyBoolean("detailsIncludeScriptPages")) {
+                $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Scripts)", 0);
+                $this->createScriptFiles();
+            }
 
-            $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Events)", 0);
-            $this->createEventFiles();
+            if ($this->ReadPropertyBoolean("detailsIncludeEventPages")) {
+                $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Events)", 0);
+                $this->createEventFiles();
+            }
 
-            $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Instance)", 0);
-            $this->createInstanceFiles();
+            if ($this->ReadPropertyBoolean("detailsIncludeInstancePages")) {
+                $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Instance)", 0);
+                $this->createInstanceFiles();
+            }
 
-            $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Media)", 0);
-            $this->createMediaFiles();
+            if ($this->ReadPropertyBoolean("detailsIncludeMediaPages")) {
+                $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Media)", 0);
+                $this->createMediaFiles();
+            }
+
 
             // Prepare array for overview and generate page
             $this->SendDebug(__FUNCTION__, "Start genOverviewArray", 0);
@@ -918,9 +954,7 @@
         private function getObjectHeader($id)
         {
             $erg = IPS_GetObject($id);
-            $this->SendDebug(__FUNCTION__, "Erzeuge Objekt Header fuer ID " . $id, 0);
-
-
+            
             $text = "# " . $this->ipsObjectType[$erg['ObjectType']] . ": ";
             $text .= IPS_GetName($id) . " (" . $id . ")" . PHP_EOL;
             $text .= "### " . IPS_GetLocation($id) . PHP_EOL;
@@ -939,8 +973,6 @@
                 $text .= "* " . $this->Translate("is object disabled?") . ": " . $this->Translate("no") . PHP_EOL;
             }
 
-            $text .= $this->getRefsFromId($id) . PHP_EOL . PHP_EOL;
-
             $text .= "### " . $this->Translate("child elements") . PHP_EOL;
             $childIds = IPS_GetChildrenIDs($id);
 
@@ -955,6 +987,10 @@
                 $text .= "| " . $this->ipsObjectType[IPS_GetObject($val)['ObjectType']];
                 $text .= "| " . IPS_GetName($val);
                 $text .= "| " . IPS_GetObject($val)['ObjectInfo'] . PHP_EOL;
+            }
+
+            if ($this->ReadPropertyBoolean("detailsShowRefs")) {
+                $text .= $this->getRefsFromId($id) . PHP_EOL . PHP_EOL;
             }
 
             $text .= PHP_EOL . "---" . PHP_EOL;
@@ -987,7 +1023,6 @@
          */
         private function getRefsFromId($id)
         {
-            $this->SendDebug(__FUNCTION__, "Suche Referenzen fuer ID " . $id . " im UtilControl Modul", 0);
             $erg = UC_FindReferences($this->ipsUtilControlId, $id);
 
             $text = "### " . $this->Translate("referenced objects") . PHP_EOL;
@@ -1039,13 +1074,9 @@
          */
         private function getTagFromText($text)
         {
-            $this->SendDebug(__FUNCTION__, "Durchsuche Text '" . $text . "' nach Tags", 0);
             $erg = array();
 
-            if (strlen($text) == 0) {
-                // Text is empty
-                array_push($erg, "UNTAGGED");
-            } else {
+            if (strlen($text) > 0) {
                 $words = explode(" ", $text);
 
                 foreach ($words as $word) {
@@ -1058,6 +1089,12 @@
                     }
                 }
             }
+            
+            if (count($erg)== 0) {
+                // Text is empty
+                array_push($erg, "UNTAGGED");
+            }
+        
             return $erg;
         }
 
@@ -1070,7 +1107,7 @@
          */
         private function removeTagsFromText($text)
         {
-            $this->SendDebug(__FUNCTION__, "Entferne Tags aus Text '" . $text . "'", 0);
+            //$this->SendDebug(__FUNCTION__, "Entferne Tags aus Text '" . $text . "'", 0);
             if ($this->ReadPropertyBoolean("overviewRemoveDescTags")) {
                 return preg_replace("/#(\w+)/", "", $text);
             } else {
@@ -1085,7 +1122,9 @@
          */
         private function genOverviewArray()
         {
-            $this->SendDebug(__FUNCTION__, "Start genOverviewArray", 0);
+            $this->SendDebug(__FUNCTION__, "Durchsuche alle ObjectInfos auf Tags", 0);
+            $timeStart = microtime(true);
+
             foreach (IPS_GetObjectList() as $o) {
                 $tmp1 = IPS_GetObject($o);
 
@@ -1098,6 +1137,10 @@
                     }
                 }
             }
+
+            $timeStop = microtime(true);
+            $dauer = round(($timeStop - $timeStart), 2);
+            $this->SendDebug(__FUNCTION__, "Das Zusammenstellen aller Tags hat " . $dauer . " Sekunden gedauert.", 0);
         }
 
 
