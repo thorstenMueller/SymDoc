@@ -189,6 +189,7 @@
             array_push($this->ipsMediaType, $this->Translate("sound"));
             array_push($this->ipsMediaType, $this->Translate("stream"));
             array_push($this->ipsMediaType, $this->Translate("chart"));
+            array_push($this->ipsMediaType, $this->Translate("document"));
         }
 
         // ==============================================================
