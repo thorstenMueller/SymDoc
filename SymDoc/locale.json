@@ -148,7 +148,8 @@
             "create detail pages for all scripts": "Detailseiten für Skripte erzeugen",
             "create detail pages for all events": "Detailseiten für Ereignisse erzeugen",
             "create detail pages for all instances": "Detailseiten für Instanzen erzeugen",
-            "create detail pages for all media": "Detailseiten für Medien erzeugen"
+            "create detail pages for all media": "Detailseiten für Medien erzeugen",
+            "instance broken (unknown)": "Instanz defekt (unbekannt)"
         }
     }
 }

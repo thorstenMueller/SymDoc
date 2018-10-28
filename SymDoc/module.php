@@ -182,8 +182,6 @@
             $this->ipsInstanceStatus[102] = $this->Translate("Instance is active");
             $this->ipsInstanceStatus[103] = $this->Translate("Instance will be deleted");
             $this->ipsInstanceStatus[104] = $this->Translate("Instance is inactiv");
-            $this->ipsInstanceStatus[200] = $this->Translate("ups");
-            $this->ipsInstanceStatus[201] = $this->Translate("ups");
         
             $this->SendDebug(__FUNCTION__, "Setze ipsMediaType", 0);
             array_push($this->ipsMediaType, $this->Translate("form"));
@@ -457,7 +455,11 @@
                 $inst = IPS_GetInstance($value);
 
 
-                $text .= "* " . $this->Translate("instance status") . ": " . $this->ipsInstanceStatus[$inst['InstanceStatus']] . PHP_EOL;
+                if ($inst['InstanceStatus'] < 200) {
+                    $text .= "* " . $this->Translate("instance status") . ": " . $this->ipsInstanceStatus[$inst['InstanceStatus']] . PHP_EOL;
+                } else {
+                    $text .= "* " . $this->Translate("instance status") . ": " . $this->Translate("instance broken (unknown)") . PHP_EOL;
+                }
                 
                 if (is_array($inst['ModuleInfo'])) {
                     $text .= "* " . $this->Translate("module name") . ": " . $inst['ModuleInfo']['ModuleName'] . PHP_EOL;
@@ -754,7 +756,13 @@
                             foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
                                 $text .= "| [" . $value3 . "](./details/" . $value3 . ".md)";
                                 $text .= "| " . IPS_GetLocation($value3);
-                                $text .= "| " . $this->ipsInstanceStatus[IPS_GetInstance($value3)['InstanceStatus']];
+
+                                if (IPS_GetInstance($value3)['InstanceStatus'] < 200) {
+                                    $text .= "| " . $this->ipsInstanceStatus[IPS_GetInstance($value3)['InstanceStatus']];
+                                } else {
+                                    $text .= "| " . $this->Translate("instance broken (unknown)");
+                                }
+                                
                                 $text .= "| " . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . PHP_EOL;
                             }
                         }
@@ -838,6 +846,11 @@
          */
         public function WriteMd()
         {
+            // max execution time set to 30 minutes and no memory limitations (in case of bigger installations)
+            // maybe memory limit must also be increased in php.ini
+            ini_set('max_execution_time', 1800);
+            ini_set('memory_limit', '-1');
+            
             $this->SendDebug(__FUNCTION__, "Starte Doku Erzeugung", 0);
             $this->setConsts();
             $this->createDir();
