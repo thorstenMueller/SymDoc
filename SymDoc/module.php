@@ -4,18 +4,11 @@
   * The module "SymDoc" generated an md-based text documentation of an IP-Symcon installation.
   *
   * @author Thorsten Mueller <MrThorstenM (at) gmx.net> / thorsten9
-  * @since 5.0.0
+  * @since 5.1.0
   *
   * i provide this module as it is, without any kind of warranty, and without any responsibility for damages from using this module.
   *
   */
-
-
-    /*
-    TODO
-    - Performantere Alternative zu UC_FindReferences
-    - IPS_GetSnapshot prüfen (ggf. ext. Properties anders abfragen)
-    */
   
     // Klassendefinition
     class SymDoc extends IPSModule
@@ -55,7 +48,7 @@
             $this->RegisterPropertyString("outputFolder", "");
             $this->RegisterPropertyBoolean("overviewPrefixText", true);
             $this->RegisterPropertyBoolean("overviewGeneralInfos", true);
-            $this->RegisterPropertyBoolean("overviewExtProperties", false);
+            $this->RegisterPropertyBoolean("overviewExtProperties", true);
             $this->RegisterPropertyBoolean("overviewScripts", true);
             $this->RegisterPropertyBoolean("overviewStrikeBrokenScripts", true);
             $this->RegisterPropertyBoolean("overviewVars", true);
@@ -182,7 +175,9 @@
             $this->ipsInstanceStatus[102] = $this->Translate("Instance is active");
             $this->ipsInstanceStatus[103] = $this->Translate("Instance will be deleted");
             $this->ipsInstanceStatus[104] = $this->Translate("Instance is inactiv");
+            $this->ipsInstanceStatus[105] = $this->Translate("Instance not created");
         
+
             $this->SendDebug(__FUNCTION__, "Setze ipsMediaType", 0);
             array_push($this->ipsMediaType, $this->Translate("form"));
             array_push($this->ipsMediaType, $this->Translate("image"));
@@ -572,22 +567,18 @@
          */
         public function overviewExtProps()
         {
-            // TODO: Ggf. anders abfragen außer IPS_GetSnapshot
+
+            $this->SendDebug(__FUNCTION__, "Start ext. Properties", 0);
 
             $text = "## " . $this->Translate("Symcon extended properties") . PHP_EOL;
-            $text .= "> TODO" . PHP_EOL;
-
-            /*
-            $tmp = json_decode(utf8_encode(IPS_GetSnapshot()), true);
-            $erg = $tmp['options'];
-
             $text .= "| " . $this->Translate("Key") . " | " . $this->Translate("Value") . " | " . PHP_EOL;
             $text .= "| --- | --- |" . PHP_EOL;
 
-            foreach ($erg as $key => $value) {
-                $text .= "| " . $key . " | " . $value . " | " . PHP_EOL;
+            foreach(IPS_GetOptionList() as $key){
+                $text .= "| " . $key . " | " . IPS_GetOption($key) . " | " . PHP_EOL;
             }
-            */
+
+            $this->SendDebug(__FUNCTION__, "Stop ext. Properties", 0);
 
             return $text;
         }
@@ -915,6 +906,21 @@
 
             $this->SendDebug(__FUNCTION__, "Setze das Datum der letzten Erstellung der Doku", 0);
             SetValue($this->GetIDForIdent("SymDoc_LastExec"), date("d.m.Y H:i"));
+
+            // Generate overview page of all symdoc output folders
+            $text = "## Summary of all symdoc generations" . PHP_EOL;
+            $text .= "Directory | Modification time" . PHP_EOL;
+            $text .= "| --- | --- |" . PHP_EOL;
+            foreach (scandir($this->ReadPropertyString("outputFolder")) as $subEntry) {
+                if (preg_match('([12]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))', $subEntry)) {
+                    if (is_dir($this->ReadPropertyString("outputFolder") . "/" . $subEntry)) {
+                        $text .= "<a href=\"./$subEntry/index.md\">" . $subEntry . "</a> | ";
+                        $text .= date("d.m.Y H:i",filemtime($this->ReadPropertyString("outputFolder") . "/" . $subEntry)) . "|" . PHP_EOL;
+                    }
+                }
+            }
+            file_put_contents($this->ReadPropertyString("outputFolder") . "/summary.md", utf8_decode($text) . PHP_EOL);
+
             echo $this->Translate("Documentation has been created");
         }
 

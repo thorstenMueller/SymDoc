@@ -26,7 +26,7 @@
         {
           "type": "CheckBox",
           "name": "overviewExtProperties",
-          "caption": "include extended properties of symcon installation (backup count, LogfileVerbose, ...) --- MIGHT TAKE LONGER IN BIG INSTALLATIONS"
+          "caption": "include extended properties of symcon installation (backup count, LogfileVerbose, ...)"
         },
         {
           "type": "CheckBox",
