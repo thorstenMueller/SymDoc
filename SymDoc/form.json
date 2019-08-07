@@ -2,12 +2,7 @@
   "elements": [
     {
       "type": "Label",
-      "caption": "This module generates a md based documentation of your symcon installation.\nTo view md files a browser plugin or good text editor is recommended."
-    },
-    {
-      "type": "ValidationTextBox",
-      "name": "outputFolder",
-      "caption": "Output folder for md files"
+      "caption": "This module generates a pdf based documentation of your symcon installation."
     },
     {
       "type": "ExpansionPanel",
@@ -114,12 +109,7 @@
     {
       "type": "Button",
       "caption": "Document symcon structure",
-      "onClick": "SymDoc_WriteMd($id)"
-    },
-    {
-      "type": "Button",
-      "caption": "List used tags",
-      "onClick": "SymDoc_ListTags($id)"
+      "onClick": "SymDoc_WritePdf($id)"
     }
   ]
 }

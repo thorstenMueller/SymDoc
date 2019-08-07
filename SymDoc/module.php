@@ -1,7 +1,10 @@
 <?php
 
+include_once __DIR__ . '/../libs/vendor/autoload.php';
+
+
 /**
-  * The module "SymDoc" generated an md-based text documentation of an IP-Symcon installation.
+  * The module "SymDoc" generated a pdf documentation of an IP-Symcon installation.
   *
   * @author Thorsten Mueller <MrThorstenM (at) gmx.net> / thorsten9
   * @since 5.1.0
@@ -23,29 +26,21 @@
         private $ipsEventConditionType = array();
         private $ipsInstanceStatus = array();
         private $ipsMediaType = array();
-
         private $ipsUtilControlId;
         private $ipsArchiveControlId;
-
-        private $outputFolderOverview;
-        private $outputFolderDetails;
         private $tagList = array();
 
-        // -------------------------------------------------------------------------------
+        private $pdf;
 
-        // Der Konstruktor des Moduls
-        // Überschreibt den Standard Kontruktor von IPS
         public function __construct($InstanceID)
         {
             parent::__construct($InstanceID);
         }
  
-        // Überschreibt die interne IPS_Create($id) Funktion
         public function Create()
         {
             parent::Create();
 
-            $this->RegisterPropertyString("outputFolder", "");
             $this->RegisterPropertyBoolean("overviewPrefixText", true);
             $this->RegisterPropertyBoolean("overviewGeneralInfos", true);
             $this->RegisterPropertyBoolean("overviewExtProperties", true);
@@ -58,36 +53,21 @@
             $this->RegisterPropertyBoolean("overviewMedia", true);
             $this->RegisterPropertyBoolean("detailsScriptInclude", true);
             $this->RegisterPropertyBoolean("overviewRemoveDescTags", false);
-
             $this->RegisterPropertyBoolean("detailsShowRefs", false);
             $this->RegisterPropertyBoolean("detailsIncludeVarPages", true);
             $this->RegisterPropertyBoolean("detailsIncludeScriptPages", true);
             $this->RegisterPropertyBoolean("detailsIncludeEventPages", true);
             $this->RegisterPropertyBoolean("detailsIncludeInstancePages", true);
             $this->RegisterPropertyBoolean("detailsIncludeMediaPages", true);
-
             
-            $idLastExec = $this->RegisterVariableString("SymDoc_LastExec", $this->Translate("last doc generation"), "~String", 0);
-            IPS_SetInfo($idLastExec, "Zeitpunkt wann die letzte Doku mit #SymDoc erzeugt wurde.");
             $idPrefixVar = $this->RegisterVariableString("SymDoc_PrefixText", $this->Translate("individual prefix text"), "~TextBox", 0);
-            IPS_SetInfo($idLastExec, "Variable für individuellen Text im Kopf der erzeugten #SymDoc Doku.");
-            $this->EnableAction("SymDoc_PrefixText");
+            IPS_SetInfo($idPrefixVar, "Variable für individuellen Text im Kopf der erzeugten #SymDoc Doku.");
         }
  
         public function ApplyChanges()
         {
-            if (strlen($this->ReadPropertyString("outputFolder"))>0) {
-                if (!is_dir($this->ReadPropertyString("outputFolder"))) {
-                    die($this->Translate("The configured path is not a directory"));
-                }
-            }
-            
             parent::ApplyChanges();
         }
-
-        // -------------------------------------------------------------------------------
-
-
 
         /**
          * Set required constants including the ips required translation.
@@ -100,14 +80,7 @@
             $this->ipsUtilControlId = IPS_GetInstanceListByModuleID("{B69010EA-96D5-46DF-B885-24821B8C8DBD}")[0];
             $this->ipsArchiveControlId = IPS_GetInstanceListByModuleID("{43192F0B-135B-4CE7-A0A7-1475603F3060}")[0];
             $this->SendDebug(__FUNCTION__, "UtilControl: " . $this->ipsUtilControlId . " --- Archiv: " . $this->ipsArchiveControlId, 0);
-
-            // Common constants
-            $dateTime = date("Y-m-d");
-            $this->SendDebug(__FUNCTION__, "Ermittle Verzeichnisse fuer Uebersicht und Details", 0);
-            $this->outputFolderOverview = $this->ReadPropertyString("outputFolder") . "/" . $dateTime;
-            $this->outputFolderDetails = $this->outputFolderOverview . "/" . "details";
-            $this->SendDebug(__FUNCTION__, "Ausgabe (Uebersicht): " . $this->outputFolderOverview . " --- Ausgabe (Details): " . $this->outputFolderDetails, 0);
-
+            
             // Set object types
             $this->SendDebug(__FUNCTION__, "Setze ipsObjectType", 0);
             array_push($this->ipsObjectType, $this->Translate('category'));
@@ -177,7 +150,6 @@
             $this->ipsInstanceStatus[104] = $this->Translate("Instance is inactiv");
             $this->ipsInstanceStatus[105] = $this->Translate("Instance not created");
         
-
             $this->SendDebug(__FUNCTION__, "Setze ipsMediaType", 0);
             array_push($this->ipsMediaType, $this->Translate("form"));
             array_push($this->ipsMediaType, $this->Translate("image"));
@@ -187,337 +159,33 @@
             array_push($this->ipsMediaType, $this->Translate("document"));
         }
 
-        // ==============================================================
-        // CREATE ONE DETAIL PAGE PER TYPE (SCRIPTS,VARS,INSTANCES,MEDIA)
-        // ==============================================================
+        private function extendMemoryLimit()
+        {
+            ini_set('max_execution_time', 1800);
+            ini_set('memory_limit', '-1');
+        }
+
+        private function initPdf()
+        {
+            $this->pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+
+            $titel = IPS_GetName(0);
+            
+            $this->pdf->SetAuthor("SymDoc");
+            $this->pdf->SetTitle($this->Translate("Symcon documentation") . ': ' . date('d.m.Y H:i'));
+        }
+
+        private function createMediaDoc()
+        {
+            $docObjId = IPS_CreateMedia(5);
         
-        /**
-          * Creates .md files for all SCRIPT OBJECTS in the "details" directory
-          *
-          * @return void
-        */
-        private function createScriptFiles()
-        {
-            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Skript Detail Seiten", 0);
-            $timeStart = microtime(true);
-
-            $scriptList = IPS_GetScriptList();
-
-            $this->SendDebug(__FUNCTION__, count($scriptList) . " Skripte werden dokumentiert", 0);
-            foreach ($scriptList as $value) {
-                $text = $this->getObjectHeader($value);
-
-                $text .= "### " . $this->Translate("script information") . PHP_EOL;
-                $text .= "* " . $this->Translate("script file") . ": " . IPS_GetScript($value)['ScriptFile'] . PHP_EOL . PHP_EOL;
-                
-                if ($this->ReadPropertyBoolean("detailsScriptInclude")) {
-                    $text .= "### " . $this->Translate("script content") . PHP_EOL;
-                    $text .= "```php" . PHP_EOL . IPS_GetScriptContent($value) . PHP_EOL . "```" . PHP_EOL;
-                }
-
-                file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
-            }
-
-            $timeStop = microtime(true);
-            $dauer = round(($timeStop - $timeStart), 2);
-            $this->SendDebug(__FUNCTION__, "Erstellung der Skript Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
-        }
-
-
-
-        /**
-         * Creates .md files for all VARIABLE OBJECTS in the "details" directory
-         *
-         * @return void
-         */
-        private function createVariableFiles()
-        {
-            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Variablen Detail Seiten", 0);
-            $timeStart = microtime(true);
-
-            $varList = IPS_GetVariableList();
-            $this->SendDebug(__FUNCTION__, count($varList) . " Variablen werden dokumentiert", 0);
-            foreach ($varList as $value) {
-                $text = $this->getObjectHeader($value);
-
-                $text .= "### " . $this->Translate("variable information") . PHP_EOL;
-                $text .= "* " . $this->Translate("custom profile") . ": " . IPS_GetVariable($value)['VariableCustomProfile'] . PHP_EOL;
-                $text .= "* " . $this->Translate("profile") . ": " . IPS_GetVariable($value)['VariableProfile'] . PHP_EOL;
-                $text .= "* " . $this->Translate("variable type") . ": " . $this->ipsVariableType[IPS_GetVariable($value)['VariableType']] . PHP_EOL;
-                $text .= "* " . $this->Translate("custom action script") . ": " . IPS_GetVariable($value)['VariableCustomAction'] . PHP_EOL;
-
-                file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
-            }
-
-            $timeStop = microtime(true);
-            $dauer = round(($timeStop - $timeStart), 2);
-            $this->SendDebug(__FUNCTION__, "Erstellung der Variablen Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
-        }
-
-   
-        /**
-         * Creates .md files for all EVENT OBJECTS in the "details" directory
-         *
-         * @return void
-         * @todo beautify cyclic and weekplan event details
-         */
-        private function createEventFiles()
-        {
-            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Ereignis Detail Seiten", 0);
-            $timeStart = microtime(true);
-
-            $varList = IPS_GetEventList();
-            $this->SendDebug(__FUNCTION__, count($varList) . " Ereignisse werden dokumentiert", 0);
-            foreach ($varList as $value) {
-                $text = $this->getObjectHeader($value);
-                $event = IPS_GetEvent($value);
-
-                // get event conditions
-                if (count($event['EventConditions'])>0) {
-                    $text .= "## " . $this->Translate("event conditions") . PHP_EOL;
-                    
-                    $text .= "> " . $this->ipsEventConditionType[$event['EventConditions'][0]['Operation']] . PHP_EOL;
-
-                    // get event conditions (variable rules)
-                    $erg = $event['EventConditions'][0]['VariableRules'];
-                    if (count($erg) > 0) {
-                        $text .= "### " . $this->Translate("variable conditions") . PHP_EOL;
-
-                        $text .= "| " . $this->Translate("variable");
-                        $text .= "| " . $this->Translate("variable location");
-                        $text .= "| " . $this->Translate("comparison");
-                        $text .= "| " . $this->Translate("value") . PHP_EOL;
+            $name = $this->Translate("Symcon documentation") . "_" . date("d.m.Y_H_i");
+            IPS_SetName($docObjId, $name);
+            IPS_SetParent($docObjId, $this->InstanceID);
+            IPS_SetMediaFile($docObjId, "media/" . $name . ".pdf", false);
             
-                        $text .= "| --- | --- | --- | --- |" . PHP_EOL;
-            
-                        foreach ($erg as $key => $val) {
-                            $text .= "| [" . $val['VariableID'] . "](./" . $val['VariableID'] . ".md)";
-                            $text .= "| " . IPS_GetLocation($val['VariableID']);
-                            $text .= "| " . $this->ipsEventConditionVar[$val['Comparison']];
-                            $text .= "| " . $val['Value'] . PHP_EOL;
-                        }
-                    }
-           
-                    // get event conditions (date rules)
-                    $erg = $event['EventConditions'][0]['DateRules'];
-                    if (count($erg) > 0) {
-                        $text .= "### " . $this->Translate("date conditions") . PHP_EOL;
-                   
-                        $text .= "| " . $this->Translate("date");
-                        $text .= "| " . $this->Translate("comparison") . PHP_EOL;
-                 
-                               
-                        $text .= "| --- | --- |" . PHP_EOL;
-                               
-                        foreach ($erg as $key => $val) {
-                            $text .= "| " . $val['Value']['Day'] . "." . $val['Value']['Month'] . "." . $val['Value']['Year'];
-                            $text .= "| " . $this->ipsEventConditionVar[$val['Comparison']] . PHP_EOL;
-                            ;
-                        }
-                    }
-
-                    // get event conditions (time rules)
-                    $erg = $event['EventConditions'][0]['TimeRules'];
-                    if (count($erg) > 0) {
-                        $text .= "### " . $this->Translate("time conditions") . PHP_EOL;
-
-                        $text .= "| " . $this->Translate("time");
-                        $text .= "| " . $this->Translate("comparison") . PHP_EOL;
-
-            
-                        $text .= "| --- | --- |" . PHP_EOL;
-            
-                        foreach ($erg as $key => $val) {
-                            $text .= "| " . $val['Value']['Hour'] . ":" . $val['Value']['Minute'] . ":" . $val['Value']['Second'];
-                            $text .= "| " . $this->ipsEventConditionVar[$val['Comparison']] . PHP_EOL;
-                            ;
-                        }
-                    }
-                }
-
-                $text .= "## " . $this->Translate("event information") . PHP_EOL;
-                
-                $text .= "* " . $this->Translate("event type: ");
-                $text .= $this->ipsEventType[$event['EventType']] . PHP_EOL;
-
-                $text .= "* " . $this->Translate("event active: ");
-                if ($event['EventActive'] == 1) {
-                    $text .= $this->Translate("yes") . PHP_EOL;
-                } else {
-                    $text .= $this->Translate("no") . PHP_EOL;
-                }
-
-
-                if ($event['EventType'] == 0) {
-                    // triggered event
-                    $text .= "### " . $this->Translate("triggered event details") . PHP_EOL;
-                    
-                    $text .= "* " . $this->ipsEventTriggerType[$event['TriggerType']] . PHP_EOL;
-                    $text .= "* " . $this->Translate("affected var") . ": ";
-                    $text .= "[" . $event['TriggerVariableID'] . "](./" . $event['TriggerVariableID'] . ".md) ";
-
-                    if (IPS_VariableExists($event['TriggerVariableID'])) {
-                        $text .= " (" . IPS_GetLocation($event['TriggerVariableID']) . ")" . PHP_EOL;
-                    } else {
-                        $text .= " (" . $this->Translate("affected variable id does not exist") . ")" . PHP_EOL;
-                    }
-                }
-
-                if ($event['EventType'] == 1) {
-                    // cyclic event
-                    $text .= "### " . $this->Translate("cyclic event details") . PHP_EOL;
-
-                    $text .= "* " . $this->Translate("cycling date type: ");
-                    $text .= "every " . $event['CyclicDateValue'] . $this->ipsEventCyclicDate[$event['CyclicDateType']] . " " . PHP_EOL;
-                   
-                    if ($event['CyclicDateDay'] > 0) {
-                        // days of week has been selected
-                        $tmp = array(1, 2, 4, 8, 16, 32, 64);
-                        $a = $event['CyclicDateDay'];
-
-                        if ($event['CyclicDateDayValue'] > 0) {
-                            $text .= " on " . $event['CyclicDateDayValue'] . PHP_EOL;
-                        }
-
-                        foreach ($tmp as $t) {
-                            $result = $t & $a;
-
-                            switch ($result) {
-                                case 1: $text .= "  * " . $this->Translate("monday") . PHP_EOL;break;
-                                case 2: $text .= "  * " . $this->Translate("tuesday") . PHP_EOL;break;
-                                case 4: $text .= "  * " . $this->Translate("wednesday") . PHP_EOL;break;
-                                case 8: $text .= "  * " . $this->Translate("thursday") . PHP_EOL;break;
-                                case 16: $text .= "  * " . $this->Translate("friday") . PHP_EOL;break;
-                                case 32: $text .= "  * " . $this->Translate("saturday") . PHP_EOL;break;
-                                case 64: $text .= "  * " . $this->Translate("sunday") . PHP_EOL;break;
-                            }
-                        }
-                    }
-                    
-                    $text .= "* " . $this->Translate("date span: ");
-                    $text .= $event['CyclicDateFrom']['Day'] . ".";
-                    $text .= $event['CyclicDateFrom']['Month'] . ".";
-                    $text .= $event['CyclicDateFrom']['Year'] . " - ";
-                    $text .= $event['CyclicDateTo']['Day'] . ".";
-                    $text .= $event['CyclicDateTo']['Month'] . ".";
-                    $text .= $event['CyclicDateTo']['Year'] . PHP_EOL;
-
-                    $text .= "* " . $this->Translate("time span: ");
-                    $text .= $event['CyclicTimeFrom']['Hour'] . ":";
-                    $text .= $event['CyclicTimeFrom']['Minute'] . ":";
-                    $text .= $event['CyclicTimeFrom']['Second'] . " - ";
-                    $text .= $event['CyclicTimeTo']['Hour'] . ":";
-                    $text .= $event['CyclicTimeTo']['Minute'] . ":";
-                    $text .= $event['CyclicTimeTo']['Second'] . PHP_EOL;
-                }
-
-                if ($event['EventType'] == 2) {
-                    // weekplan event
-                    $text .= "### " . $this->Translate("weekplan event details") . PHP_EOL;
-
-                    $text .= "* " . $this->Translate("the weekplan has the following options: ") . PHP_EOL;
-                    foreach ($event['ScheduleActions'] as $weekplanActionKey => $weekplanActionValue) {
-                        $text .= "  * " . $weekplanActionValue['Name'] . PHP_EOL;
-                    }
-                }
-
-                file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
-            }
-
-            $timeStop = microtime(true);
-            $dauer = round(($timeStop - $timeStart), 2);
-
-            $this->SendDebug(__FUNCTION__, "Erstellung der Ereignis Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
+            return $docObjId;
         }
-
-        /**
-         * Creates .md files for all INSTANCE OBJECTS in the "details" directory
-         *
-         * @return void
-         */
-        private function createInstanceFiles()
-        {
-            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Instanz Detail Seiten", 0);
-            $timeStart = microtime(true);
-
-            $instList = IPS_GetInstanceList();
-            $this->SendDebug(__FUNCTION__, count($instList) . " Instanzen werden dokumentiert", 0);
-
-            foreach ($instList as $value) {
-                $text = $this->getObjectHeader($value);
-
-                $text .= "### " . $this->Translate("instance information") . PHP_EOL;
-
-                $inst = IPS_GetInstance($value);
-
-
-                if ($inst['InstanceStatus'] < 200) {
-                    $text .= "* " . $this->Translate("instance status") . ": " . $this->ipsInstanceStatus[$inst['InstanceStatus']] . PHP_EOL;
-                } else {
-                    $text .= "* " . $this->Translate("instance status") . ": " . $this->Translate("instance broken (unknown)") . PHP_EOL;
-                }
-                
-                if (is_array($inst['ModuleInfo'])) {
-                    $text .= "* " . $this->Translate("module name") . ": " . $inst['ModuleInfo']['ModuleName'] . PHP_EOL;
-           
-                    /*
-                    $modDetails = IPS_GetModule($inst['ModuleInfo']['ModuleID']);
-
-                    $text .= "* " . $modDetails['Vendor'] . PHP_EOL;
-                    foreach ($modDetails['Aliases'] as $alias) {
-                        $text .= "Alias: " . $alias . PHP_EOL;
-                    }
-                    */
-                }
-
-                file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
-            }
-
-            $timeStop = microtime(true);
-            $dauer = round(($timeStop - $timeStart), 2);
-            $this->SendDebug(__FUNCTION__, "Erstellung der Instanz Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
-        }
-
-        /**
-         * Creates .md files for all MEDIA OBJECTS in the "details" directory
-         *
-         * @return void
-         */
-        private function createMediaFiles()
-        {
-            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Media Detail Seiten", 0);
-            $timeStart = microtime(true);
-
-            $mediaList = IPS_GetMediaList();
-            $this->SendDebug(__FUNCTION__, count($mediaList) . " Medien werden dokumentiert", 0);
-            foreach ($mediaList as $value) {
-                $text = $this->getObjectHeader($value);
-
-                $text .= "### " . $this->Translate("media information") . PHP_EOL;
-
-                $media = IPS_GetMedia($value);
-
-                $text .= "* " . $this->Translate("media file") . ": " . $media['MediaFile'] . PHP_EOL;
-                $text .= "* " . $this->Translate("media is available") . ": " . $media['MediaIsAvailable'] . PHP_EOL;
-                $text .= "* " . $this->Translate("media is cached") . ": " . $media['MediaIsCached'] . PHP_EOL;
-                $text .= "* " . $this->Translate("media size in bytes") . ": " . $media['MediaSize'] . PHP_EOL;
-                
-                file_put_contents($this->outputFolderDetails . "/" . $value . ".md", utf8_decode($text) . PHP_EOL);
-            }
-
-            $timeStop = microtime(true);
-            $dauer = round(($timeStop - $timeStart), 2);
-
-            $this->SendDebug(__FUNCTION__, "Erstellung der Media Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
-        }
-
-        // =========================
-        // END DETAIL PAGES CREATION
-        // =========================
-
-        // ==================================
-        // PREPARE SECTIONS FOR OVERVIEW PAGE
-        // ==================================
 
         /**
           * Generates a text for the top of the overview page.
@@ -527,263 +195,379 @@
           * - Machine name where document was created
           * - Individual content based on instance variable
           *
-          * @return String the md formatted header text
+          * @return String the pdf formatted header text
           */
         private function overviewHeader()
         {
             $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung des Overview Headers", 0);
-            $text = "# " . $this->Translate("Symcon documentation:" . " " . IPS_GetName(0)) . PHP_EOL;
-            $text .= "> " . sprintf($this->Translate("this documentation was created automatically on %s for machine %s"), date("d.m.Y H:i"), gethostname());
-            $text .= PHP_EOL . PHP_EOL;
-
-            if ($this->ReadPropertyBoolean("overviewPrefixText")) {
-                // Individual text info should be added
-                $this->SendDebug(__FUNCTION__, "Der benutzerdefinierte Text soll im Header angezeigt werden.", 0);
-                $text .= GetValue($this->GetIDForIdent("SymDoc_PrefixText")) . PHP_EOL . PHP_EOL;
-            }
-   
+            $text = "<h1>" . $this->Translate("Symcon documentation" . " " . IPS_GetName(0)) . "</h1>" . PHP_EOL;
+            $text .= "<h3>" . sprintf($this->Translate("this documentation was created automatically on %s for machine %s"), date("d.m.Y H:i"), gethostname()) . "</h3>";
+     
             return $text;
         }
-
+  
         /**
-          * Generates a footer text for the overview page.
-          * @return String the md formatted header text
+          * Generates an individual text if the related var has a value 
+          *
+          * @return String the individual start text as html
           */
-        private function overviewFooter()
+        private function overviewIndividualText()
         {
-            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung des Overview Footers", 0);
-            $text = PHP_EOL . PHP_EOL . "---" . PHP_EOL;
-            $text .=  "> " . $this->Translate("this module is provided by thorsten9. Use on your own risk. No kind of warrenties!");
-            $text .= PHP_EOL;
-  
+            $text = "<h1><center>Individuelle Einleitung</center></h1>";
+            $this->SendDebug(__FUNCTION__, "Der benutzerdefinierte Text soll im Header angezeigt werden.", 0);
+            $text .= GetValue($this->GetIDForIdent("SymDoc_PrefixText")) . PHP_EOL . PHP_EOL;
+
             return $text;
         }
-  
 
-        /**
-         * Generates a table text with extended IPS properties
-         *
-         * @return String the md formatted table text with IPS extended properties
-         */
-        public function overviewExtProps()
+
+        public function WritePdf()
         {
+            $this->SendDebug(__FUNCTION__, "Starte Doku Erzeugung", 0);
 
+            $this->extendMemoryLimit();
+            $this->setConsts();
+
+            // Ouput PDF als Medium erzeugen und PDF initialisieren
+            $docObjId = $this->createMediaDoc();
+            $this->initPdf();
+            
+            // Daten für die Doku aufbereiten (IDs pro Tag)
+            $this->genOverviewArray();
+
+            // Deckblatt generieren
+            $this->genDeckblatt();
+
+            // Prüfen ob individueller Einleitungstext ausgegeben werden soll
+            if ($this->ReadPropertyBoolean("overviewPrefixText") && (strlen(GetValue($this->GetIDForIdent("SymDoc_PrefixText"))) > 0)) {
+                $this->pdf->AddPage();
+                $this->pdf->Bookmark('Individuelle Einleitung', 0, -1, '', '', array(0,0,0));
+                $this->pdf->writeHTML($this->overviewIndividualText(), true, false, true, false, 'C');
+            }
+
+            // Allgemeine IPS Informationen
+            $this->pdf->Bookmark('Allgemeine IPS Informationen', 0, -1, '', 'B', array(0,0,0));
+            
+            // IPS Properties
+            $this->pdf->AddPage();
+            
+
+            $this->pdf->Bookmark('Generische Informationen', 1, -1, '', '', array(0,0,0));
+            $this->pdf->writeHTML($this->overviewGenericInfo(), true, false, true, false, '');
+
+            // Spezialschalter
+            $this->pdf->Bookmark('Erweiterte Eigenschaften', 1, -1, '', '', array(0,0,0));
+            $this->pdf->writeHTML($this->overviewExtProps(), true, false, true, false, '');
+
+            // Zusammenfassung aller Objekte pro Tag
+            // =====================================
+            $this->pdf->Bookmark("Zusammenfassung der Objekte", 0, -1, '', '', array(0,0,0));
+
+            // Liste aller Tags
+            $tagArray = $this->tagList;
+
+            // Eine Seite pro "Tag" und pro "Tag" und Typ einen Eintrag ins Inhaltsverzeichnis
+            foreach ($tagArray as $tagName => $value) {
+                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "'", 0);
+
+                // Jedes Tag auf einer extra Seite mit Link im Inhaltsverzeichnis
+                $this->pdf->AddPage('L', 'A4', true, false);
+                $this->pdf->Bookmark($tagName, 1, -1, '', '', array(0,0,0));
+
+                // Einen Eintrag im Inhaltsverzeichnis pro Objekt-Typ (Skript, Instanz, etc.)
+                $typeArray = $this->tagList[$tagName];
+                foreach ($typeArray as $typeName => $value2) {
+                    $this->pdf->Bookmark($typeName, 2, -1, '', '', array(0,0,0));
+                    $this->pdf->writeHTML($this->genOverviewByTag($tagName, $typeName));
+                }
+            }
+
+            // Start der Detailseiten
+            $this->pdf->AddPage('P');
+            $this->pdf->Bookmark("Objekte im Detail", 0, -1, '', '', array(0,0,0));
+            
+            $this->createScriptFiles();
+            $this->createVariableFiles();
+
+            // Inhaltsverzeichnis
+            $this->pdf->addTOCPage('P');
+
+            // write the TOC title
+            $this->pdf->MultiCell(0, 0, 'Inhaltsverzeichnis', 0, 'L', 0, 1, '', '', true, 0);
+            $this->pdf->Ln();
+            
+            $this->pdf->addTOC(2, 'helvetica', '.', 'INDEX', '', array(0,0,0));
+            
+            // end of TOC page
+            $this->pdf->endTOCPage();
+            
+            $output = $this->pdf->Output("", "S");
+            IPS_SetMediaContent($docObjId, base64_encode($output));
+
+        }
+
+        private function genDeckblatt()
+        {
+            // Deckblatt mit IPS Logo erzeugen
+            $this->pdf->AddPage();
+            $this->pdf->setJPEGQuality(100);
+
+            $img = __DIR__ . '/../imgs/symcon_automation_solutions.svg';
+            $this->pdf->ImageSVG($file=$img, $x=0, $y=50, $w='', $h=100, $link='', $align='N', $palign='C', $border=0, $fitonpage=true);
+            $this->pdf->SetXY(1, 150, true);
+            $this->pdf->SetFont('helvetica', 'B', 28);
+            $this->pdf->Write('', IPS_GetName(0), '', false, 'C', true, 0, false, false, 0, 0, '');
+            
+            $this->pdf->SetFont('helvetica', '', 20);
+            $this->pdf->Write('', gethostname(), '', false, 'C', false, 0, false, false, 0, 0, '');
+            
+            $this->pdf->Ln('', false);
+        
+            $this->pdf->Write('', 'Stand: ' . date('d.m.Y H:i'), '', false, 'C', false, 0, false, false, 0, 0, '');
+            $this->pdf->SetFont('helvetica', '', 10);
+        }
+        
+        private function overviewExtProps()
+        {
             $this->SendDebug(__FUNCTION__, "Start ext. Properties", 0);
 
-            $text = "## " . $this->Translate("Symcon extended properties") . PHP_EOL;
-            $text .= "| " . $this->Translate("Key") . " | " . $this->Translate("Value") . " | " . PHP_EOL;
-            $text .= "| --- | --- |" . PHP_EOL;
+            $text = "<h1>" . $this->Translate("Symcon extended properties") . "</h1>" . PHP_EOL;
+            $text .= "<table border=\"1\" cellpadding=\"2px\">";
 
-            foreach(IPS_GetOptionList() as $key){
-                $text .= "| " . $key . " | " . IPS_GetOption($key) . " | " . PHP_EOL;
+            foreach (IPS_GetOptionList() as $key) {
+                $text .= "<tr><td>" . $key . "</td><td>" . IPS_GetOption($key) . "</td></tr>" . PHP_EOL;
             }
+
+            $text .= "</table>";
 
             $this->SendDebug(__FUNCTION__, "Stop ext. Properties", 0);
 
             return $text;
         }
+        
 
         /**
          * Generates a table text with generic IPS information
          *
-         * @return String the md formatted table text with generic IPS information
+         * @return String the pdf formatted table text with generic IPS information
          */
         private function overviewGenericInfo()
         {
             $this->SendDebug(__FUNCTION__, "Erzeuge Text fuer die allgemeinen IPS Programmeinstellungen", 0);
 
-            $text = "## " . $this->Translate("Generic program information") . PHP_EOL;
-
-            $text .= "| " . $this->Translate("Key") . " | " . $this->Translate("Value") . " | " . PHP_EOL;
-            $text .= "| --- | --- |" . PHP_EOL;
-            $text .= "| " . $this->Translate("program directory") . " | " . IPS_GetKernelDir() . " | " . PHP_EOL;
-            $text .= "| " . $this->Translate("platform") . " | " . IPS_GetKernelPlatform() . " | " . PHP_EOL;
-            $text .= "| " . $this->Translate("kernel version") . " | " . IPS_GetKernelVersion() . " | " . PHP_EOL;
-            $text .= "| " . $this->Translate("kernel revision") . " | " . IPS_GetKernelRevision() . " | " . PHP_EOL;
-            $text .= "| " . $this->Translate("log directory") . " | " . IPS_GetLogDir() . " | " . PHP_EOL;
+            $text = "<h1>" . $this->Translate("Generic program information") . "</h1>" . PHP_EOL;
+            $text .= "<table border=\"1\" cellpadding=\"2px\">";
+       
+            $text .= "<tr><td>" . $this->Translate("program directory") . "</td><td>" . IPS_GetKernelDir() . "</td></tr>" . PHP_EOL;
+            $text .= "<tr><td>" . $this->Translate("platform") . "</td><td>" . IPS_GetKernelPlatform() . "</td></tr>" . PHP_EOL;
+            $text .= "<tr><td>" . $this->Translate("kernel version") . "</td><td>" . IPS_GetKernelVersion() . "</td></tr>" . PHP_EOL;
+            $text .= "<tr><td>" . $this->Translate("kernel revision") . "</td><td>" . IPS_GetKernelRevision() . "</td></tr>" . PHP_EOL;
+            $text .= "<tr><td>" . $this->Translate("log directory") . "</td><td>" . IPS_GetLogDir() . "</td></tr>" . PHP_EOL;
             
             $this->SendDebug(__FUNCTION__, "Zeige das Ablaufdatum der Subscription an", 0);
             $subscriptionValidUntil = date("d.m.Y H:i", GetValue(IPS_GetObjectIDByIdent("LicenseSubscription", $this->ipsUtilControlId)));
-            $text .= "| " . $this->Translate("subscription valid to") . " | " . $subscriptionValidUntil . " | " . PHP_EOL;
+            $text .= "<tr><td>" . $this->Translate("subscription valid to") . "</td><td>" . $subscriptionValidUntil . "</td></tr>" . PHP_EOL;
+
+            $text .= "</table>";
 
             return $text;
         }
 
+
         /**
-         * Generate .md File (index.md) as overview grouped by tags within object description.
+         * Generate overview grouped by tags within object description.
          *
-         * @return String the md formatted string with table overviews of all tags and object types
+         * @return String the html formatted string with table overviews of all tags and object types
          */
-        private function genOverviewByTag()
+        private function genOverviewByTag($tagName, $typeName)
         {
-            $this->SendDebug(__FUNCTION__, "Erzeuge Text fuer die Uebersichtsseite gruppiert nach Tags", 0);
+            $this->SendDebug(__FUNCTION__, "Erzeuge Text fuer die Uebersichtsseite für Tag " . $tagName . " und Typ " . $typeName, 0);
             $timeStart = microtime(true);
             $text = "";
-            $tagArray = $this->tagList;
+            $text .= "<h2>" . $tagName . " (" . $typeName . ")</h2>" . PHP_EOL;
 
-            foreach ($tagArray as $tagName => $value) {
-                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "'", 0);
-                $text .= PHP_EOL . "---" . PHP_EOL;
-                $text .= "## " . $tagName . PHP_EOL;
+            // Übersicht der Skripte
+            // ---------------------
+            if (($typeName == $this->Translate("SCRIPT")) && ($this->ReadPropertyBoolean("overviewScripts"))) {
+                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (SCRIPT)", 0);
+            
+                $text .= "<table border=\"1\" cellpadding=\"2px\">" . PHP_EOL;
+                $text .= "<thead><tr align=\"center\" style=\"font-weight:bold;background-color:#0b2f51;color:#ffffff;\">" . PHP_EOL;
+                $text .= "<td width=\"10%\">Id</td>" . PHP_EOL;
+                $text .= "<td width=\"35%\">" . $this->Translate("name and location") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"10%\">" . $this->Translate("childs") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"20%\">" . $this->Translate("last execution") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"25%\">" . $this->Translate("description") . "</td>" . PHP_EOL;
+                $text .= "</tr></thead>" . PHP_EOL;
+
+                foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
+                    if ((IPS_GetScript($value3)['ScriptIsBroken']) && ($this->ReadPropertyBoolean("overviewStrikeBrokenScripts"))) {
+                        $tmpBrokenStart = "<del>";
+                        $tmpBrokenEnd = "</del>";
+                    } else {
+                        $tmpBrokenStart = "";
+                        $tmpBrokenEnd = "";
+                    }
+
+                    $text .= "<tr align=\"center\"><td width=\"10%\">";
+                    $text .= "<a href=\"#" . $value3 . "\">" . $tmpBrokenStart . $value3 . $tmpBrokenEnd . "</a></td>";
+
+                    $text .= "<td align=\"left\" width=\"35%\">" . $tmpBrokenStart . IPS_GetLocation($value3) . $tmpBrokenEnd . "</td>";
+                    $text .= "<td width=\"10%\">" . $tmpBrokenStart . count(IPS_GetChildrenIDs($value3)) . $tmpBrokenEnd . "</td>";
+                    $text .= "<td width=\"20%\">" . $tmpBrokenStart . date("d.m.Y H:i", IPS_GetScript($value3)['ScriptExecuted']) . $tmpBrokenEnd . "</td>";
+                    $text .= "<td align=\"left\" width=\"25%\">" . $tmpBrokenStart . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . $tmpBrokenEnd . "</td></tr>" . PHP_EOL;
+                }
+                $text .= "</table>";
+            }
+        
+
+            // Übersicht der Variablen
+            // -----------------------
+            if (($typeName == $this->Translate("VARIABLE")) && ($this->ReadPropertyBoolean("overviewVars"))) {
+                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (VARIABLE)", 0);
                 
-                $typeArray = $this->tagList[$tagName];
-                foreach ($typeArray as $typeName => $value2) {
-                    if (is_array($this->tagList[$tagName][$typeName])) {
-                        $text .= "> [" . $this->Translate("back to toc") . "](./index.md#" . strtolower($this->Translate("toc")). ")" . PHP_EOL . PHP_EOL;
+                $text .= "<table border=\"1\" cellpadding=\"2px\">" . PHP_EOL;
+                $text .= "<thead><tr style=\"font-weight:bold;background-color:#0b2f51;color:#ffffff;\">" . PHP_EOL;
+                $text .= "<td align=\"center\" width=\"10%\">Id</td>" . PHP_EOL;
+                $text .= "<td align=\"center\" width=\"45%\">" . $this->Translate("name and location") . "</td>" . PHP_EOL;
+                $text .= "<td align=\"center\" width=\"10%\">" . $this->Translate("archived") . "</td>" . PHP_EOL;
+                $text .= "<td align=\"center\" width=\"35%\">" . $this->Translate("description") . "</td>" . PHP_EOL;
+                $text .= "</tr></thead>" . PHP_EOL;
+                
+                foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
+                    $text .= "<tr><td align=\"center\" width=\"10%\">" . $value3 . "</td>";
+                    $text .= "<td width=\"45%\">" . IPS_GetLocation($value3) . "</td>";
 
-                        if (($typeName == $this->Translate("SCRIPT")) && ($this->ReadPropertyBoolean("overviewScripts"))) {
-                            $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (SCRIPT)", 0);
-                            $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
-                            $text .= "| Id";
-                            $text .= " | " . $this->Translate("name and location");
-                            $text .= " | " . $this->Translate("number of childs");
-                            $text .= " | " . $this->Translate("last execution");
-                            $text .= " | " . $this->Translate("description") . PHP_EOL;
-                            $text .= "| --- | --- | --- | --- | --- |" . PHP_EOL;
-    
-                            foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
-                                if ((IPS_GetScript($value3)['ScriptIsBroken']) && ($this->ReadPropertyBoolean("overviewStrikeBrokenScripts"))) {
-                                    $tmpBrokenStart = "<del>";
-                                    $tmpBrokenEnd = "</del>";
-                                } else {
-                                    $tmpBrokenStart = "";
-                                    $tmpBrokenEnd = "";
-                                }
-
-                                $text .= "| [" . $tmpBrokenStart . $value3 . "](./details/" . $value3 . ".md)" . $tmpBrokenEnd;
-                                $text .= "| " . $tmpBrokenStart . IPS_GetLocation($value3) . $tmpBrokenEnd;
-                                $text .= "| " . $tmpBrokenStart . count(IPS_GetChildrenIDs($value3)) . $tmpBrokenEnd;
-                                $text .= "| " . $tmpBrokenStart . date("d.m.Y H:i", IPS_GetScript($value3)['ScriptExecuted']) . $tmpBrokenEnd;
-                                $text .= "| " . $tmpBrokenStart . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . $tmpBrokenEnd . PHP_EOL;
-                            }
-                        }
-
-                        if (($typeName == $this->Translate("VARIABLE")) && ($this->ReadPropertyBoolean("overviewVars"))) {
-                            $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (VARIABLE)", 0);
-                            $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
-                            $text .= "| Id";
-                            $text .= " | " . $this->Translate("name and location");
-                            $text .= " | " . $this->Translate("number of childs");
-                            $text .= " | " . $this->Translate("archived");
-                            $text .= " | " . $this->Translate("description") . PHP_EOL;
-                            $text .= "| --- | --- | --- | --- | --- |" . PHP_EOL;
-        
-                            
-                            foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
-                                $text .= "| [" . $value3 . "](./details/" . $value3 . ".md)";
-                                $text .= "| " . IPS_GetLocation($value3);
-                                $text .= "| " . count(IPS_GetChildrenIDs($value3));
-                                $text .= "| ";
-                                if (AC_GetLoggingStatus($this->ipsArchiveControlId, $value3) == 1) {
-                                    if (AC_GetAggregationType($this->ipsArchiveControlId, $value3) == 0) {
-                                        $text .= $this->Translate("yes") . " (" . $this->Translate("standard") . ")";
-                                    } else {
-                                        $text .= $this->Translate("yes") . " (" . $this->Translate("counter") . ")";
-                                    }
-                                }
-
-                                $text .= "| " . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . PHP_EOL;
-                            }
-                        }
-
-                        if (($typeName == $this->Translate("LINK")) && ($this->ReadPropertyBoolean("overviewLinks"))) {
-                            $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (LINK)", 0);
-                            $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
-                            $text .= "| Id";
-                            $text .= " | " . $this->Translate("name and location");
-                            $text .= " | " . $this->Translate("linked object");
-                            $text .= " | " . $this->Translate("description") . PHP_EOL;
-                            $text .= "| --- | --- | --- | --- |" . PHP_EOL;
-        
-                            
-                            foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
-                                $text .= "| " . $value3;
-                                $text .= "| " . IPS_GetLocation($value3);
-                                $targetId = IPS_GetLink($value3)['TargetID'];
-                                if (IPS_ObjectExists($targetId)) {
-                                    $text .= "| " . IPS_GetLocation($targetId) . " ([" . $targetId . "](./details/" . $targetId . ".md))";
-                                }
-                                $text .= "| " . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . PHP_EOL;
-                            }
-                        }
-
-
-                        if (($typeName == $this->Translate("EVENT")) && ($this->ReadPropertyBoolean("overviewEvent"))) {
-                            $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (EVENT)", 0);
-                            $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
-                            $text .= "| Id";
-                            $text .= " | " . $this->Translate("name and location");
-                            $text .= " | " . $this->Translate("number of childs");
-                            $text .= " | " . $this->Translate("event has conditions");
-                            $text .= " | " . $this->Translate("event type");
-                            $text .= " | " . $this->Translate("description") . PHP_EOL;
-                            $text .= "| --- | --- | --- | --- | --- | --- |" . PHP_EOL;
-        
-                            
-                            foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
-                                $text .= "| [" . $value3 . "](./details/" . $value3 . ".md)";
-                                $text .= "| " . IPS_GetLocation($value3);
-                                $text .= "| " . count(IPS_GetChildrenIDs($value3));
-                                
-                                $text .= "| ";
-                                if (count(IPS_GetEvent($value3)['EventConditions'])>0) {
-                                    $text .= $this->Translate("yes");
-                                }
-                                
-                                $text .= "| " . $this->ipsEventType[IPS_GetEvent($value3)['EventType']];
-                                $text .= "| " . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . PHP_EOL;
-                            }
-                        }
-
-                        if (($typeName == $this->Translate("INSTANCE")) && ($this->ReadPropertyBoolean("overviewInstances"))) {
-                            $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (INSTANCE)", 0);
-                            $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
-                            $text .= "| Id";
-                            $text .= " | " . $this->Translate("name and location");
-                            $text .= " | " . $this->Translate("instance status");
-                            $text .= " | " . $this->Translate("description") . PHP_EOL;
-                            $text .= "| --- | --- | --- | --- |" . PHP_EOL;
-        
-                            
-                            foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
-                                $text .= "| [" . $value3 . "](./details/" . $value3 . ".md)";
-                                $text .= "| " . IPS_GetLocation($value3);
-
-                                if (IPS_GetInstance($value3)['InstanceStatus'] < 200) {
-                                    $text .= "| " . $this->ipsInstanceStatus[IPS_GetInstance($value3)['InstanceStatus']];
-                                } else {
-                                    $text .= "| " . $this->Translate("instance broken (unknown)");
-                                }
-                                
-                                $text .= "| " . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . PHP_EOL;
-                            }
-                        }
-
-
-                        if (($typeName == $this->Translate("MEDIA")) && ($this->ReadPropertyBoolean("overviewMedia"))) {
-                            $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (MEDIA)", 0);
-                            $text .= "### " . $tagName . " (" . $typeName . ")" . PHP_EOL;
-                            $text .= "| Id";
-                            $text .= " | " . $this->Translate("name and location");
-                            $text .= " | " . $this->Translate("media file");
-                            $text .= " | " . $this->Translate("media type");
-                            $text .= " | " . $this->Translate("media size");
-                            $text .= " | " . $this->Translate("description") . PHP_EOL;
-                            $text .= "| --- | --- | --- | --- | --- | ---- |" . PHP_EOL;
-        
-                            
-                            foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
-                                $text .= "| [" . $value3 . "](./details/" . $value3 . ".md)";
-                                $text .= "| " . IPS_GetLocation($value3);
-                                $text .= "| " . IPS_GetMedia($value3)['MediaFile'];
-                                $text .= "| " . $this->ipsMediaType[IPS_GetMedia($value3)['MediaType']];
-                                $text .= "| " . IPS_GetMedia($value3)['MediaSize'];
-                                $text .= "| " . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . PHP_EOL;
-                            }
+                    $text .= "<td align=\"center\" width=\"10%\">";
+                    if (AC_GetLoggingStatus($this->ipsArchiveControlId, $value3) == 1) {
+                        if (AC_GetAggregationType($this->ipsArchiveControlId, $value3) == 0) {
+                            $text .= $this->Translate("yes") . " (" . $this->Translate("standard") . ")";
+                        } else {
+                            $text .= $this->Translate("yes") . " (" . $this->Translate("counter") . ")";
                         }
                     }
+                    $text .= "</td>";
+
+                    $text .= "<td width=\"35%\">" . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . "</td></tr>" . PHP_EOL;
                 }
+                $text .= "</table>";
             }
+            
+            // Übersicht der Links
+            // -------------------
+            if (($typeName == $this->Translate("LINK")) && ($this->ReadPropertyBoolean("overviewLinks"))) {
+                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (LINK)", 0);
+
+                $text .= "<table border=\"1\" cellpadding=\"2px\">" . PHP_EOL;
+                $text .= "<thead><tr align=\"center\" style=\"font-weight:bold;background-color:#0b2f51;color:#ffffff;\">" . PHP_EOL;
+                $text .= "<td width=\"10%\">Id</td>" . PHP_EOL;
+                $text .= "<td width=\"30%\">" . $this->Translate("name and location") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"30%\">" . $this->Translate("linked object") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"30%\">" . $this->Translate("description") . "</td>" . PHP_EOL;
+                $text .= "</tr></thead>" . PHP_EOL;
+
+                foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
+                    $text .= "<tr align=\"center\"><td width=\"10%\">" . $value3 . "</td>";
+                    $text .= "<td align=\"left\" width=\"30%\">" . IPS_GetLocation($value3) . "</td>";
+                    $targetId = IPS_GetLink($value3)['TargetID'];
+                    if (IPS_ObjectExists($targetId)) {
+                        $text .= "<td width=\"30%\">" . IPS_GetLocation($targetId) . "</td>";
+                    }
+                    $text .= "<td width=\"30%\">" . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . "</td></tr>" . PHP_EOL;
+                }
+                $text .= "</table>";
+            }
+
+
+            // Übersicht der Ereignisse
+            // ------------------------
+            if (($typeName == $this->Translate("EVENT")) && ($this->ReadPropertyBoolean("overviewEvent"))) {
+                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (EVENT)", 0);
+               
+                $text .= "<table border=\"1\" cellpadding=\"2px\">" . PHP_EOL;
+                $text .= "<thead><tr align=\"center\" style=\"font-weight:bold;background-color:#0b2f51;color:#ffffff;\">" . PHP_EOL;
+                $text .= "<td width=\"10%\">Id</td>" . PHP_EOL;
+                $text .= "<td width=\"30%\">" . $this->Translate("name and location") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"5%\">" . $this->Translate("number of childs") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"10%\">" . $this->Translate("event has conditions") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"20%\">" . $this->Translate("event type") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"25%\">" . $this->Translate("description") . "</td>" . PHP_EOL;
+                $text .= "</tr></thead>" . PHP_EOL;
+                
+                foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
+                    $text .= "<tr align=\"center\"><td width=\"10%\">" . $value3 . "</td>";
+                    $text .= "<td align=\"left\" width=\"30%\">" . IPS_GetLocation($value3) . "</td>";
+                    $text .= "<td width=\"5%\">" . count(IPS_GetChildrenIDs($value3)) . "</td>";
+
+                    $text .= "<td width=\"10%\">";
+                    if (count(IPS_GetEvent($value3)['EventConditions'])>0) {
+                        $text .= $this->Translate("yes");
+                    }
+                    $text .= "</td>" . PHP_EOL;
+                    
+                    $text .= "<td width=\"20%\">" . $this->ipsEventType[IPS_GetEvent($value3)['EventType']] . "</td>";
+                    $text .= "<td width=\"25%\">" . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . "</td></tr>" . PHP_EOL;
+                }
+                $text .= "</table>" . PHP_EOL;
+            }
+
+            // Übersicht der Instanzen
+            // -----------------------
+            if (($typeName == $this->Translate("INSTANCE")) && ($this->ReadPropertyBoolean("overviewInstances"))) {
+                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (INSTANCE)", 0);
+                
+                $text .= "<table border=\"1\" cellpadding=\"2px\">" . PHP_EOL;
+                $text .= "<thead><tr align=\"center\" style=\"font-weight:bold;background-color:#0b2f51;color:#ffffff;\">" . PHP_EOL;
+                $text .= "<td width=\"10%\">Id</td>" . PHP_EOL;
+                $text .= "<td width=\"35%\">" . $this->Translate("name and location") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"20%\">" . $this->Translate("instance status") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"35%\">" . $this->Translate("description") . "</td>" . PHP_EOL;
+                $text .= "</tr></thead>" . PHP_EOL;
+
+                foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
+                    $text .= "<tr align=\"center\"><td width=\"10%\">" . $value3 . "</td>";
+                    $text .= "<td align=\"left\" width=\"35%\">" . IPS_GetLocation($value3) . "</td>";
+
+                    if (IPS_GetInstance($value3)['InstanceStatus'] < 200) {
+                        $text .= "<td width=\"20%\">" . $this->ipsInstanceStatus[IPS_GetInstance($value3)['InstanceStatus']] . "</td>" . PHP_EOL;
+                    } else {
+                        $text .= "<td width=\"20%\">" . $this->Translate("instance broken (unknown)") . "</td>" . PHP_EOL;
+                    }
+                    
+                    $text .= "<td width=\"35%\">" . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . "</td></tr>" . PHP_EOL;
+                }
+                $text .= "</table>";
+            }
+
+            // Übersicht der Medien
+            // --------------------
+            if (($typeName == $this->Translate("MEDIA")) && ($this->ReadPropertyBoolean("overviewMedia"))) {
+                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (MEDIA)", 0);
+                
+                $text .= "<table border=\"1\" cellpadding=\"2px\">" . PHP_EOL;
+                $text .= "<thead>" . PHP_EOL;
+                $text .= "<tr align=\"center\" style=\"font-weight:bold;background-color:#0b2f51;color:#ffffff\">" . PHP_EOL;
+                $text .= "<td width=\"10%\">Id</td>" . PHP_EOL;
+                $text .= "<td align=\"left\" width=\"25%\">" . $this->Translate("name and location") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"15%\">" . $this->Translate("media file") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"15%\">" . $this->Translate("media type") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"15%\">" . $this->Translate("media size") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"20%\">" . $this->Translate("description") . "</td>" . PHP_EOL;
+                $text .= "</tr></thead>" . PHP_EOL;
+                
+                foreach ($this->tagList[$tagName][$typeName] as $key3 => $value3) {
+                    $text .= "<tr align=\"center\"><td width=\"10%\">" . $value3 . "</td>" . PHP_EOL;
+                    $text .= "<td align=\"left\" width=\"25%\">" . IPS_GetLocation($value3) . "</td>" . PHP_EOL;
+                    $text .= "<td width=\"15%\">" . IPS_GetMedia($value3)['MediaFile'] . "</td>" . PHP_EOL;
+                    $text .= "<td width=\"15%\">" . $this->ipsMediaType[IPS_GetMedia($value3)['MediaType']] . "</td>" . PHP_EOL;
+                    $text .= "<td width=\"15%\">" . round(IPS_GetMedia($value3)['MediaSize'] / 1024) . " KB </td>" . PHP_EOL;
+                    $text .= "<td width=\"20%\">" . $this->removeTagsFromText(IPS_GetObject($value3)['ObjectInfo']) . "</td></tr>" . PHP_EOL;
+                }
+
+                $text .= "</table>";
+            }
+
+
 
             $timeStop = microtime(true);
             $dauer = round(($timeStop - $timeStart), 2);
@@ -792,297 +576,35 @@
             return $text;
         }
 
-        // ====================================
-        // END PREPARATION OF OVERVIEW SECTIONS
-        // ====================================
 
         /**
-         * Create the required directories
+         * genOverviewArray
          *
          * @return void
          */
-        private function createDir()
+        private function genOverviewArray()
         {
-            $this->SendDebug(__FUNCTION__, "Pruefe ob Overview und Detail Verzeichnisse existieren und lege ggf. an", 0);
-            if (!is_dir($this->outputFolderOverview)) {
-                $this->SendDebug(__FUNCTION__, "Overview Verzeichnis anlegen: " . $this->outputFolderOverview, 0);
-                mkdir($this->outputFolderOverview);
-            }
+            $this->SendDebug(__FUNCTION__, "Durchsuche alle ObjectInfos auf Tags", 0);
+            $timeStart = microtime(true);
 
-            if (!is_dir($this->outputFolderDetails)) {
-                $this->SendDebug(__FUNCTION__, "Detail Verzeichnis anlegen: " . $this->outputFolderOverview, 0);
-                mkdir($this->outputFolderDetails);
-            }
-        }
+            foreach (IPS_GetObjectList() as $o) {
+                $tmp1 = IPS_GetObject($o);
 
-        /**
-         * Shows a list of all used tags withing object infos.
-         *
-         * @return string List of used tags including crlf
-         */
-        public function ListTags()
-        {
-            $this->setConsts();
-            $this->genOverviewArray();
-
-            echo "List of used tags: \n";
-            foreach ($this->tagList as $key => $value) {
-                echo $key . PHP_EOL;
-            }
-        }
-
-        /**
-         * Main method which generates the documentation
-         *
-         * @return void
-         */
-        public function WriteMd()
-        {
-            // max execution time set to 30 minutes and no memory limitations (in case of bigger installations)
-            // maybe memory limit must also be increased in php.ini
-            ini_set('max_execution_time', 1800);
-            ini_set('memory_limit', '-1');
-            
-            $this->SendDebug(__FUNCTION__, "Starte Doku Erzeugung", 0);
-            $this->setConsts();
-            $this->createDir();
-
-            // Generate all detail files
-            if ($this->ReadPropertyBoolean("detailsIncludeVarPages")) {
-                $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Vars)", 0);
-                $this->createVariableFiles();
-            }
-
-            if ($this->ReadPropertyBoolean("detailsIncludeScriptPages")) {
-                $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Scripts)", 0);
-                $this->createScriptFiles();
-            }
-
-            if ($this->ReadPropertyBoolean("detailsIncludeEventPages")) {
-                $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Events)", 0);
-                $this->createEventFiles();
-            }
-
-            if ($this->ReadPropertyBoolean("detailsIncludeInstancePages")) {
-                $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Instance)", 0);
-                $this->createInstanceFiles();
-            }
-
-            if ($this->ReadPropertyBoolean("detailsIncludeMediaPages")) {
-                $this->SendDebug(__FUNCTION__, "Generiere Detail Seite (Media)", 0);
-                $this->createMediaFiles();
-            }
-
-
-            // Prepare array for overview and generate page
-            $this->SendDebug(__FUNCTION__, "Start genOverviewArray", 0);
-            $this->genOverviewArray();
-            $text = "";
-
-            $this->SendDebug(__FUNCTION__, "Start overviewHeader", 0);
-            $text .= $this->overviewHeader();
-            
-            if ($this->ReadPropertyBoolean("overviewGeneralInfos")) {
-                $this->SendDebug(__FUNCTION__, "Start overviewGenericInfo", 0);
-                $text .= $this->overviewGenericInfo();
-            }
-            
-            if ($this->ReadPropertyBoolean("overviewExtProperties")) {
-                $this->SendDebug(__FUNCTION__, "Start overviewExtProperties", 0);
-                $text .= $this->overviewExtProps();
-            }
-            
-            $this->SendDebug(__FUNCTION__, "Start genToc", 0);
-            $text .= $this->genToc();
-
-            $this->SendDebug(__FUNCTION__, "Start genOverviewByTag", 0);
-            $text .= $this->genOverviewByTag();
-
-            $this->SendDebug(__FUNCTION__, "Start overviewFooter", 0);
-            $text .= $this->overviewFooter();
-
-            $this->SendDebug(__FUNCTION__, "Overview Seite als UTF8 speichern", 0);
-            file_put_contents($this->outputFolderOverview . "/index.md", utf8_decode($text) . PHP_EOL);
-
-            $this->SendDebug(__FUNCTION__, "Setze das Datum der letzten Erstellung der Doku", 0);
-            SetValue($this->GetIDForIdent("SymDoc_LastExec"), date("d.m.Y H:i"));
-
-            // Generate overview page of all symdoc output folders
-            $text = "## Summary of all symdoc generations" . PHP_EOL;
-            $text .= "Directory | Modification time" . PHP_EOL;
-            $text .= "| --- | --- |" . PHP_EOL;
-            foreach (scandir($this->ReadPropertyString("outputFolder")) as $subEntry) {
-                if (preg_match('([12]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))', $subEntry)) {
-                    if (is_dir($this->ReadPropertyString("outputFolder") . "/" . $subEntry)) {
-                        $text .= "<a href=\"./$subEntry/index.md\">" . $subEntry . "</a> | ";
-                        $text .= date("d.m.Y H:i",filemtime($this->ReadPropertyString("outputFolder") . "/" . $subEntry)) . "|" . PHP_EOL;
+                if ($tmp1['ObjectType'] > 0) {
+                    // Ignore categories
+                    $desc = $tmp1['ObjectInfo'];
+                    $type = $this->ipsObjectType[$tmp1['ObjectType']];
+                    foreach ($this->getTagFromText($desc) as $tag) {
+                        $this->tagList[$tag][strtoupper($type)][] = $o;
                     }
                 }
             }
-            file_put_contents($this->ReadPropertyString("outputFolder") . "/summary.md", utf8_decode($text) . PHP_EOL);
 
-            echo $this->Translate("Documentation has been created");
+            $timeStop = microtime(true);
+            $dauer = round(($timeStop - $timeStart), 2);
+            $this->SendDebug(__FUNCTION__, "Das Zusammenstellen aller Tags hat " . $dauer . " Sekunden gedauert.", 0);
         }
 
-        /**
-         * This functions sets object infos text recursive starting at parentid.
-         *
-         * @param  mixed $parentId starting id
-         * @param  mixed $description object info text including tags
-         * @param  mixed $appendInfo true when description should be appended to existing text
-         *
-         * @return void
-         */
-        public function WriteRecursiveObjInfo($parentId, $description, $appendInfo=true)
-        {
-            $tmp1 = $this->GetRecursiveObjectList($parentId);
-
-            foreach ($tmp1 as $tmp2) {
-                if ($appendInfo) {
-                    IPS_SetInfo($tmp2, IPS_GetObject($tmp2)['ObjectInfo'] . " " . $description);
-                } else {
-                    IPS_SetInfo($tmp2, $description);
-                }
-            }
-        }
-        
-        /**
-         * GetRecursiveObjectList
-         *
-         * @param  mixed $parent
-         *
-         * @return array List of all childs ids (recursive) under parentId
-         */
-        private function GetRecursiveObjectList($parent)
-        {
-            $ids = IPS_GetChildrenIDs($parent);
-            foreach ($ids as $id) {
-                $ids = array_merge($ids, $this->GetRecursiveObjectList($id));
-            }
-            return $ids;
-        }
-
-
-
-        /**
-         * Generated md syntax text with common object information using IPS_GetObject
-         *
-         * @param  int $id object id
-         *
-         * @return string md syntax with common object information
-         */
-        private function getObjectHeader($id)
-        {
-            $erg = IPS_GetObject($id);
-            
-            $text = "# " . $this->ipsObjectType[$erg['ObjectType']] . ": ";
-            $text .= IPS_GetName($id) . " (" . $id . ")" . PHP_EOL;
-            $text .= "### " . IPS_GetLocation($id) . PHP_EOL;
-
-            $text .= "> [" . $this->Translate("Back to overview") . "](../index.md)" . PHP_EOL . PHP_EOL;
-
-            $text .= "### " . $this->Translate("Common object information") . PHP_EOL;
-            $text .= "* " . $this->Translate("object icon") . ": " . $erg['ObjectIcon'] . PHP_EOL;
-
-            $text .= "* " . $this->Translate("object ident") . ": " . $erg['ObjectIdent'] . PHP_EOL;
-            $text .= "* " . $this->Translate("object info") . ": **" . $erg['ObjectInfo'] . "**" . PHP_EOL;
-            
-            if ($erg['ObjectIsDisabled'] == 1) {
-                $text .= "* " . $this->Translate("is object disabled?") . ": " . $this->Translate("yes") . PHP_EOL;
-            } else {
-                $text .= "* " . $this->Translate("is object disabled?") . ": " . $this->Translate("no") . PHP_EOL;
-            }
-
-            $text .= "### " . $this->Translate("child elements") . PHP_EOL;
-            $childIds = IPS_GetChildrenIDs($id);
-
-            $text .= "| " . $this->Translate("id");
-            $text .= " | " . $this->Translate("object Type");
-            $text .= " | " . $this->Translate("object name");
-            $text .= " | " . $this->Translate("object description") . PHP_EOL;
-            $text .= "| --- | --- | --- | --- |" . PHP_EOL;
-            
-            foreach ($childIds as $key => $val) {
-                $text .= "| [" . $val . "](" .  $val . ".md)";
-                $text .= "| " . $this->ipsObjectType[IPS_GetObject($val)['ObjectType']];
-                $text .= "| " . IPS_GetName($val);
-                $text .= "| " . IPS_GetObject($val)['ObjectInfo'] . PHP_EOL;
-            }
-
-            if ($this->ReadPropertyBoolean("detailsShowRefs")) {
-                $text .= $this->getRefsFromId($id) . PHP_EOL . PHP_EOL;
-            }
-
-            $text .= PHP_EOL . "---" . PHP_EOL;
-
-            return $text;
-        }
-
-        private function genToc()
-        {
-            $this->SendDebug(__FUNCTION__, "Erzeuge Inhaltsverzeichnis", 0);
-            $tocObject = PHP_EOL . "# " . $this->Translate("toc") . PHP_EOL;
-            $tocObject .= "<details><summary>" . $this->Translate("toc of symcon objects") . "</summary>" . PHP_EOL;
-            $tocObject .= "<p>" . PHP_EOL . PHP_EOL;
-            ksort($this->tagList);
-            foreach ($this->tagList as $key => $value) {
-                $tocObject .=" * [" . $key . "](#" . strtolower($key) . ")" . PHP_EOL;
-            }
-            $tocObject .= PHP_EOL . PHP_EOL;
-            $tocObject .= "</p>" . PHP_EOL . "</details>" . PHP_EOL . PHP_EOL;
-        
-            return $tocObject;
-        }
-
-        /**
-         * Generates a md table with referenced objects
-         *
-         * @param  int id
-         *
-         * @return string md formatted text with referenced objects
-         */
-        private function getRefsFromId($id)
-        {
-            $erg = UC_FindReferences($this->ipsUtilControlId, $id);
-
-            $text = "### " . $this->Translate("referenced objects") . PHP_EOL;
-
-            $text .= "| " . $this->Translate("id");
-            $text .= " | " . $this->Translate("name and location");
-            $text .= " | " . $this->Translate("reference type") . PHP_EOL;
-            $text .= "| --- | --- | --- |" . PHP_EOL;
-  
-            foreach ($erg as $entry) {
-                $objId = $entry['ObjectID'];
-                $text .= "| [" . $objId . "](" . $objId . ".md)";
-                $text .= "| " . IPS_GetName($objId) . " (" . IPS_GetLocation($objId) . ")";
-                $text .= "| " . $this->ipsObjectType[IPS_GetObject($objId)['ObjectType']] . PHP_EOL;
-            }
-            
-            return $text;
-        }
-
-        /**
-         * getLinksFromId
-         *
-         * @param  mixed $id
-         *
-         * @return void
-         */
-        private function getLinksFromId($id)
-        {
-            $this->SendDebug(__FUNCTION__, "Frage Ziel von Link mit ID " . $id . " ab", 0);
-            $links = array();
-            $erg = IPS_GetLinkList();
-            foreach ($erg as $linkId) {
-                $tmp = IPS_GetLink($linkId);
-                if ($tmp['TargetID'] == $id) {
-                    array_push($links, $linkId);
-                }
-            }
-
-            return $links;
-        }
 
 
         /**
@@ -1118,6 +640,7 @@
             return $erg;
         }
 
+
         /**
          * Remove found tags from object info if option is set in configururation
          *
@@ -1136,50 +659,116 @@
         }
 
         /**
-         * genOverviewArray
-         *
-         * @return void
-         */
-        private function genOverviewArray()
+          * Creates pdf pages for all SCRIPT OBJECTS
+          *
+          * @return void
+        */
+        private function createScriptFiles()
         {
-            $this->SendDebug(__FUNCTION__, "Durchsuche alle ObjectInfos auf Tags", 0);
+            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Skript Detail Seiten", 0);
             $timeStart = microtime(true);
 
-            foreach (IPS_GetObjectList() as $o) {
-                $tmp1 = IPS_GetObject($o);
+            $this->pdf->Bookmark('Scripts', 1, -1, '', '', array(0,0,0));
+            $scriptList = IPS_GetScriptList();
 
-                if ($tmp1['ObjectType'] > 0) {
-                    // Ignore categories
-                    $desc = $tmp1['ObjectInfo'];
-                    $type = $this->ipsObjectType[$tmp1['ObjectType']];
-                    foreach ($this->getTagFromText($desc) as $tag) {
-                        $this->tagList[$tag][strtoupper($type)][] = $o;
-                    }
-                }
+            $this->SendDebug(__FUNCTION__, count($scriptList) . " Skripte werden dokumentiert", 0);
+            foreach ($scriptList as $value) {
+                $text = "<h2>Script #" . $value . " - " . IPS_GetName($value) . "</h2>";
+
+                $this->pdf->Bookmark($value . "(" . IPS_GetName($value) . ")", 2, -1, '', '', array(0,0,0));
+                $text .= "<a name=\"". $value . "\"></a>";
+
+                $text .= $this->getObjectHeader($value);
+
+                $text .= "<br><br>";
+                $this->pdf->writeHTML($text, true, false, true, false, '');
             }
 
             $timeStop = microtime(true);
             $dauer = round(($timeStop - $timeStart), 2);
-            $this->SendDebug(__FUNCTION__, "Das Zusammenstellen aller Tags hat " . $dauer . " Sekunden gedauert.", 0);
+            $this->SendDebug(__FUNCTION__, "Erstellung der Skript Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
+        }
+
+        private function createVariableFiles()
+        {
+            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Variablen Detail Seiten", 0);
+            $timeStart = microtime(true);
+
+            $varList = IPS_GetVariableList();
+            $this->SendDebug(__FUNCTION__, count($varList) . " Variablen werden dokumentiert", 0);
+            foreach ($varList as $value) {
+                $text = "<h2>Variable #" . $value . " - " . IPS_GetName($value) . "</h2>";
+
+                $this->pdf->Bookmark($value . "(" . IPS_GetName($value) . ")", 2, -1, '', '', array(0,0,0));
+                $text .= "<a name=\"". $value . "\"></a>";
+
+                $text .= $this->getObjectHeader($value);
+
+                $text .= "<ul>" . PHP_EOL;
+                $text .= "<li>" . $this->Translate("custom profile") . ": " . IPS_GetVariable($value)['VariableCustomProfile'] . PHP_EOL;
+                $text .= "<li>" . $this->Translate("profile") . ": " . IPS_GetVariable($value)['VariableProfile'] . PHP_EOL;
+                $text .= "<li>" . $this->Translate("variable type") . ": " . $this->ipsVariableType[IPS_GetVariable($value)['VariableType']] . PHP_EOL;
+                $text .= "<li>" . $this->Translate("custom action script") . ": " . IPS_GetVariable($value)['VariableCustomAction'] . PHP_EOL;
+
+                $text .= "</ul><br><br>";
+                $this->pdf->writeHTML($text, true, false, true, false, '');
+            }
+
+            $timeStop = microtime(true);
+            $dauer = round(($timeStop - $timeStart), 2);
+            $this->SendDebug(__FUNCTION__, "Erstellung der Variablen Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
         }
 
 
         /**
-         * RequestAction
+         * Generated html text with common object information using IPS_GetObject
          *
-         * @param  mixed $Ident
-         * @param  mixed $Value
+         * @param  int $id object id
          *
-         * @return void
+         * @return string md syntax with common object information
          */
-        public function RequestAction($Ident, $Value)
+        private function getObjectHeader($id)
         {
-            switch ($Ident) {
-                case "SymDoc_PrefixText":
-                    SetValue($this->GetIDForIdent("SymDoc_PrefixText"), $Value);
-                    break;
-                default:
-                    throw new Exception("Invalid ident");
+            $erg = IPS_GetObject($id);
+            
+            $text = IPS_GetLocation($id) . "<br><br>" . PHP_EOL;
+
+            $text = "<u><b>" . $this->Translate("Common object information") . "</u></b>". PHP_EOL;
+            $text .= "<ul>";
+            $text .= "<li> " . $this->Translate("object icon") . ": " . $erg['ObjectIcon'] . "</li>" . PHP_EOL;
+            $text .= "<li> " . $this->Translate("object ident") . ": " . $erg['ObjectIdent'] . "</li>" . PHP_EOL;
+            $text .= "<li> " . $this->Translate("object info") . ": " . $erg['ObjectInfo'] . "</li>" . PHP_EOL;
+            
+            if ($erg['ObjectIsDisabled'] == 1) {
+                $text .= "<li> " . $this->Translate("is object disabled?") . ": " . $this->Translate("yes") . "</li>" . PHP_EOL;
+            } else {
+                $text .= "<li> " . $this->Translate("is object disabled?") . ": " . $this->Translate("no") . "</li>" . PHP_EOL;
             }
+            $text .= "</ul><br>" . PHP_EOL;
+
+
+            $childIds = IPS_GetChildrenIDs($id);
+            if (count($childIds) > 0) {
+                $text .= "<u><b> " . $this->Translate("child elements") . "</u></b><br><br>" . PHP_EOL;
+
+                $text .= "<table border=\"1\" cellpadding=\"2px\">" . PHP_EOL;
+                $text .= "<thead>" . PHP_EOL;
+                $text .= "<tr align=\"center\" style=\"font-weight:bold;background-color:#0b2f51;color:#ffffff\">" . PHP_EOL;
+                $text .= "<td width=\"10%\">Id</td>" . PHP_EOL;
+                $text .= "<td align=\"left\" width=\"20%\">" . $this->Translate("object Type") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"35%\">" . $this->Translate("object name") . "</td>" . PHP_EOL;
+                $text .= "<td width=\"35%\">" . $this->Translate("object description") . "</td>" . PHP_EOL;
+                $text .= "</tr></thead>" . PHP_EOL;
+                
+                foreach ($childIds as $key => $val) {
+                    $text .= "<tr align=\"center\"><td width=\"10%\">" . $val . "</td>" . PHP_EOL;
+                    $text .= "<td align=\"left\" width=\"20%\">" . $this->ipsObjectType[IPS_GetObject($val)['ObjectType']] . "</td>" . PHP_EOL;
+                    $text .= "<td width=\"35%\">" . IPS_GetName($val) . "</td>" . PHP_EOL;
+                    $text .= "<td width=\"35%\">" . IPS_GetObject($val)['ObjectInfo'] . "</td></tr>" . PHP_EOL;
+                }
+                $text .= "</table>";
+            }
+
+            return $text;
         }
     }

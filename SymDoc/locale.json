@@ -1,13 +1,12 @@
 {
     "translations": {
         "de": {
-            "This module generates a md based documentation of your symcon installation.\nTo view md files a browser plugin or good text editor is recommended.": "Dieses Modul erstellt eine Dokumentation der Symcon Installation.\nUm die Doku zu betrachten empfehlen sich Browser-Plugins.",
+            "This module generates a pdf based documentation of your symcon installation.": "Dieses Modul erstellt eine PDF-Dokumentation der Symcon Installation.",
             "include individual prefix text in overview": "Individuellen Einleitungstext einbinden",
             "individual prefix text": "Individueller Einleitungstext",
             "SymDoc Action Script": "SymDoc Aktionsskript",
             "remove tags from description": "Tags in der Beschreibung nicht anzeigen",
             "last doc generation": "Doku zuletzt erzeugt am",
-            "Symcon documentation:": "Symcon Dokumentation:",
             "Output folder for md files": "Ausgabeverzeichnis der MD-Dateien",
             "include script content in documentation": "Den Inhalt der Skripte mitdokumentieren",
             "settings for overview page": "Einstellungen für die Übersichtsseite",
@@ -76,7 +75,7 @@
             "subscription valid to": "Subskription gültig bis",
             "back to toc": "Zurück zum Inhaltsverzeichnis",
             "name and location": "Name und Pfad",
-            "number of childs": "Anzahl Kind-Objekte",
+            "childs": "Kinder",
             "number of references": "Anzahl Referenzen",
             "last execution": "Letzte Ausführung",
             "description": "Beschreibung",
@@ -128,7 +127,7 @@
             "object icon": "Objekt Icon",
             "object ident": "Ident des Objektes",
             "object info": "Objektbeschreibung",
-            "is object disabled?": "Ist das Objekt versteckt?",
+            "is object disabled?": "Ist das Objekt deaktiviert?",
             "referenced objects": "Referenzierte Objekte",
             "reference type": "Typ des Referenzobjektes",
             "variable information": "Information zur Variable",
@@ -151,7 +150,10 @@
             "create detail pages for all instances": "Detailseiten für Instanzen erzeugen",
             "create detail pages for all media": "Detailseiten für Medien erzeugen",
             "instance broken (unknown)": "Instanz defekt (unbekannt)",
-            "document": "Dokument"
+            "document": "Dokument",
+            "media file": "Medien Datei",
+            "media type": "Medientyp",
+            "media size": "Dateigröße"
         }
     }
 }

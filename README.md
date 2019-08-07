@@ -1,7 +1,7 @@
 # SymDoc - Dokumentation der IP-Symcon Umgebung
-SymDoc erzeugt eine Dokumentation auf Basis von MD-Dateien (https://de.wikipedia.org/wiki/Markdown). Das ist die Syntax die auch für diese README Datei verwendet wird.
+SymDoc erzeugt eine Dokumentation als PDF Datei.
 Es erzeugt eine Übersichtsseite mit einer tabellarischen und gruppierten Darstellung aller (per Konfiguration) gewünschter
-Objekte. Um die Doku zu lesen gibt es u.a. Browser Plugins (Firefox Plugin: Markdown Viewer Webext).   
+Objekte.
 Zu jedem Objekt (außer Link-Objekten) gibt es einen Hyperlink der auf eine Detailseite des jeweiligen Objektes verweist.
 In dieser tabellarischen Darstellung wird bspw. auch die Objekt-Info als Beschreibung ausgegeben.
 Der Objekt-Info kommt zusätzlich zum reinen beschreibenden Character noch eine wesentliche Funktion zu - Tags (Details siehe weiter unten).
