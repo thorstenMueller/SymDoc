@@ -105,11 +105,6 @@
           "caption": "create detail pages for all media"
         }
       ]
-    },
-    {
-      "type": "Button",
-      "caption": "Document symcon structure",
-      "onClick": "SymDoc_WritePdf($id)"
     }
   ]
 }
