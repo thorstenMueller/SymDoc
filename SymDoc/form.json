@@ -105,6 +105,12 @@
           "caption": "create detail pages for all media"
         }
       ]
+    },
+    {
+      "type": "Button",
+      "name": "genSymDoc",
+      "caption": "Generiere PDF Dokumentation",
+      "onClick": "SymDoc_WritePdf($id);"
     }
   ]
 }
