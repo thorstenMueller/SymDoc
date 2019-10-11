@@ -7,7 +7,7 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
   * The module "SymDoc" generated a pdf documentation of an IP-Symcon installation.
   *
   * @author Thorsten Mueller <MrThorstenM (at) gmx.net> / thorsten9
-  * @since 5.1.0
+  * @since 5.2.0
   *
   * i provide this module as it is, without any kind of warranty, and without any responsibility for damages from using this module.
   *
@@ -29,7 +29,7 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
         private $ipsUtilControlId;
         private $ipsArchiveControlId;
         private $tagList = array();
-
+       
         private $pdf;
 
         public function __construct($InstanceID)
@@ -51,7 +51,7 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             $this->RegisterPropertyBoolean("overviewEvent", true);
             $this->RegisterPropertyBoolean("overviewInstances", true);
             $this->RegisterPropertyBoolean("overviewMedia", true);
-            $this->RegisterPropertyBoolean("detailsScriptInclude", true);
+            $this->RegisterPropertyBoolean("detailsScriptInclude", false);
             $this->RegisterPropertyBoolean("overviewRemoveDescTags", false);
             $this->RegisterPropertyBoolean("detailsShowRefs", false);
             $this->RegisterPropertyBoolean("detailsIncludeVarPages", true);
@@ -62,11 +62,19 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             
             $idPrefixVar = $this->RegisterVariableString("SymDoc_PrefixText", $this->Translate("individual prefix text"), "~TextBox", 0);
             IPS_SetInfo($idPrefixVar, "Variable für individuellen Text im Kopf der erzeugten #SymDoc Doku.");
+        
         }
  
         public function ApplyChanges()
         {
             parent::ApplyChanges();
+        }
+
+        public function GetConfigurationForm()
+        {
+            $jsonForm = json_decode(file_get_contents(__DIR__ . "/form.json"), true);
+
+            return json_encode($jsonForm);
         }
 
         /**
@@ -76,13 +84,14 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
          */
         private function setConsts()
         {
-            $this->SendDebug(__FUNCTION__, "Ermittle Id vom UtilControl und Archiv", 0);
+            $this->DebugProgress("Ermittle Id vom UtilControl und Archiv");
             $this->ipsUtilControlId = IPS_GetInstanceListByModuleID("{B69010EA-96D5-46DF-B885-24821B8C8DBD}")[0];
             $this->ipsArchiveControlId = IPS_GetInstanceListByModuleID("{43192F0B-135B-4CE7-A0A7-1475603F3060}")[0];
-            $this->SendDebug(__FUNCTION__, "UtilControl: " . $this->ipsUtilControlId . " --- Archiv: " . $this->ipsArchiveControlId, 0);
-            
+            $this->DebugProgress("UtilControl: " . $this->ipsUtilControlId . " --- Archiv: " . $this->ipsArchiveControlId);
+
             // Set object types
-            $this->SendDebug(__FUNCTION__, "Setze ipsObjectType", 0);
+            $this->DebugProgress("Setze ipsObjectTyp");
+
             array_push($this->ipsObjectType, $this->Translate('category'));
             array_push($this->ipsObjectType, $this->Translate('instance'));
             array_push($this->ipsObjectType, $this->Translate('variable'));
@@ -92,7 +101,7 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             array_push($this->ipsObjectType, $this->Translate('link'));
 
             // Set event types
-            $this->SendDebug(__FUNCTION__, "Setze ipsEventCyclingTime", 0);
+            $this->DebugProgress("Setze ipsEventCyclingTime");
             array_push($this->ipsEventCyclingTime, $this->Translate('daily'));
             array_push($this->ipsEventCyclingTime, $this->Translate('once'));
             array_push($this->ipsEventCyclingTime, $this->Translate('daily'));
@@ -101,13 +110,13 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             array_push($this->ipsEventCyclingTime, $this->Translate('daily'));
         
             // Set event trigger
-            $this->SendDebug(__FUNCTION__, "Setze ipsEventType", 0);
+            $this->DebugProgress("Setze ipsEventType");
             array_push($this->ipsEventType, $this->Translate('triggered'));
             array_push($this->ipsEventType, $this->Translate('cyclic'));
             array_push($this->ipsEventType, $this->Translate('weekplan'));
 
             // Set event trigger type details
-            $this->SendDebug(__FUNCTION__, "Setze ipsEventTriggerType", 0);
+            $this->DebugProgress("Setze ipsEventTriggerType");
             array_push($this->ipsEventTriggerType, $this->Translate('on variable update'));
             array_push($this->ipsEventTriggerType, $this->Translate('on variable change'));
             array_push($this->ipsEventTriggerType, $this->Translate('on limit drop'));
@@ -115,7 +124,7 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             array_push($this->ipsEventTriggerType, $this->Translate('on defined value'));
 
             // Set event cyclic details
-            $this->SendDebug(__FUNCTION__, "Setze ipsEventCyclicDate", 0);
+            $this->DebugProgress("Setze ipsEventCyclicDate");
             array_push($this->ipsEventCyclicDate, $this->Translate('no date type'));
             array_push($this->ipsEventCyclicDate, $this->Translate('once'));
             array_push($this->ipsEventCyclicDate, $this->Translate('daily'));
@@ -124,14 +133,14 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             array_push($this->ipsEventCyclicDate, $this->Translate('yearly'));
 
             // Set variable types
-            $this->SendDebug(__FUNCTION__, "Setze ipsVariableType", 0);
+            $this->DebugProgress("Setze ipsVariableType");
             array_push($this->ipsVariableType, "Boolean");
             array_push($this->ipsVariableType, "Integer");
             array_push($this->ipsVariableType, "Float");
             array_push($this->ipsVariableType, "String");
 
             // Set event conditions on vars
-            $this->SendDebug(__FUNCTION__, "Setze ipsEventConditionVar", 0);
+            $this->DebugProgress("Setze ipsEventConditionVar");
             array_push($this->ipsEventConditionVar, $this->Translate("equals"));
             array_push($this->ipsEventConditionVar, $this->Translate("unequal"));
             array_push($this->ipsEventConditionVar, $this->Translate("greater"));
@@ -139,18 +148,18 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             array_push($this->ipsEventConditionVar, $this->Translate("less"));
             array_push($this->ipsEventConditionVar, $this->Translate("less or equal"));
 
-            $this->SendDebug(__FUNCTION__, "Setze ipsEventConditionType", 0);
+            $this->DebugProgress("Setze ipsEventConditionType");
             array_push($this->ipsEventConditionType, $this->Translate("all conditions must apply"));
             array_push($this->ipsEventConditionType, $this->Translate("just one condition must apply"));
 
-            $this->SendDebug(__FUNCTION__, "Setze ipsInstanceStatus", 0);
+            $this->DebugProgress("Setze ipsInstanceStatus");
             $this->ipsInstanceStatus[101] = $this->Translate("Instance will be created");
             $this->ipsInstanceStatus[102] = $this->Translate("Instance is active");
             $this->ipsInstanceStatus[103] = $this->Translate("Instance will be deleted");
             $this->ipsInstanceStatus[104] = $this->Translate("Instance is inactiv");
             $this->ipsInstanceStatus[105] = $this->Translate("Instance not created");
         
-            $this->SendDebug(__FUNCTION__, "Setze ipsMediaType", 0);
+            $this->DebugProgress("Setze ipsMediaType");
             array_push($this->ipsMediaType, $this->Translate("form"));
             array_push($this->ipsMediaType, $this->Translate("image"));
             array_push($this->ipsMediaType, $this->Translate("sound"));
@@ -199,7 +208,7 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
           */
         private function overviewHeader()
         {
-            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung des Overview Headers", 0);
+            $this->DebugProgress("Erzeugung PDF Deckblatt",true);
             $text = "<h1>" . $this->Translate("Symcon documentation" . " " . IPS_GetName(0)) . "</h1>" . PHP_EOL;
             $text .= "<h3>" . sprintf($this->Translate("this documentation was created automatically on %s for machine %s"), date("d.m.Y H:i"), gethostname()) . "</h3>";
      
@@ -207,14 +216,15 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
         }
   
         /**
-          * Generates an individual text if the related var has a value 
+          * Generates an individual text if the related var has a value
           *
           * @return String the individual start text as html
           */
         private function overviewIndividualText()
         {
             $text = "<h1><center>Individuelle Einleitung</center></h1>";
-            $this->SendDebug(__FUNCTION__, "Der benutzerdefinierte Text soll im Header angezeigt werden.", 0);
+            $this->DebugProgress("Der benutzerdefinierte Text soll im Header angezeigt werden");
+
             $text .= GetValue($this->GetIDForIdent("SymDoc_PrefixText")) . PHP_EOL . PHP_EOL;
 
             return $text;
@@ -223,7 +233,9 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
 
         public function WritePdf()
         {
-            $this->SendDebug(__FUNCTION__, "Starte Doku Erzeugung", 0);
+            $this->UpdateFormField("progressDetail", "visible", true);
+
+            $this->DebugProgress("Starte Doku Erzeugung",true);
 
             $this->extendMemoryLimit();
             $this->setConsts();
@@ -250,7 +262,6 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             
             // IPS Properties
             $this->pdf->AddPage();
-            
 
             $this->pdf->Bookmark('Generische Informationen', 1, -1, '', '', array(0,0,0));
             $this->pdf->writeHTML($this->overviewGenericInfo(), true, false, true, false, '');
@@ -268,7 +279,7 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
 
             // Eine Seite pro "Tag" und pro "Tag" und Typ einen Eintrag ins Inhaltsverzeichnis
             foreach ($tagArray as $tagName => $value) {
-                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "'", 0);
+                $this->DebugProgress("Erstelle tabellarischen Überblick der IPS Objekte getaggt mit # '" . $tagName . "'",true);
 
                 // Jedes Tag auf einer extra Seite mit Link im Inhaltsverzeichnis
                 $this->pdf->AddPage('L', 'A4', true, false);
@@ -280,14 +291,20 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
                     $this->pdf->Bookmark($typeName, 2, -1, '', '', array(0,0,0));
                     $this->pdf->writeHTML($this->genOverviewByTag($tagName, $typeName));
                 }
+
             }
 
             // Start der Detailseiten
             $this->pdf->AddPage('P');
             $this->pdf->Bookmark("Objekte im Detail", 0, -1, '', '', array(0,0,0));
             
-            $this->createScriptFiles();
-            $this->createVariableFiles();
+            if ($this->ReadPropertyBoolean("detailsIncludeScriptPages")) {
+                $this->createScriptFiles();
+            }
+
+            if ($this->ReadPropertyBoolean("detailsIncludeVarPages")) {
+                $this->createVariableFiles();
+            }
 
             // Inhaltsverzeichnis
             $this->pdf->addTOCPage('P');
@@ -303,6 +320,11 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             
             $output = $this->pdf->Output("", "S");
             IPS_SetMediaContent($docObjId, base64_encode($output));
+
+            echo $this->Translate("PDF generation successful");
+            $this->DebugProgress("PDF Erstellung abgeschlossen",true);
+            IPS_Sleep(1000);
+            $this->UpdateFormField("progressDetail", "visible", false);
 
         }
 
@@ -329,7 +351,7 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
         
         private function overviewExtProps()
         {
-            $this->SendDebug(__FUNCTION__, "Start ext. Properties", 0);
+            $this->DebugProgress("Dokumentiere erweiterte IPS Programmeinstellungen",true);
 
             $text = "<h1>" . $this->Translate("Symcon extended properties") . "</h1>" . PHP_EOL;
             $text .= "<table border=\"1\" cellpadding=\"2px\">";
@@ -340,7 +362,7 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
 
             $text .= "</table>";
 
-            $this->SendDebug(__FUNCTION__, "Stop ext. Properties", 0);
+            $this->DebugProgress("Stop ext. Properties");
 
             return $text;
         }
@@ -353,7 +375,7 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
          */
         private function overviewGenericInfo()
         {
-            $this->SendDebug(__FUNCTION__, "Erzeuge Text fuer die allgemeinen IPS Programmeinstellungen", 0);
+            $this->DebugProgress("Dokumentiere allgemeinen IPS Programmeinstellungen",true);
 
             $text = "<h1>" . $this->Translate("Generic program information") . "</h1>" . PHP_EOL;
             $text .= "<table border=\"1\" cellpadding=\"2px\">";
@@ -364,7 +386,8 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             $text .= "<tr><td>" . $this->Translate("kernel revision") . "</td><td>" . IPS_GetKernelRevision() . "</td></tr>" . PHP_EOL;
             $text .= "<tr><td>" . $this->Translate("log directory") . "</td><td>" . IPS_GetLogDir() . "</td></tr>" . PHP_EOL;
             
-            $this->SendDebug(__FUNCTION__, "Zeige das Ablaufdatum der Subscription an", 0);
+            $this->DebugProgress("Zeige das Ablaufdatum der Subscription an");
+            
             $subscriptionValidUntil = date("d.m.Y H:i", GetValue(IPS_GetObjectIDByIdent("LicenseSubscription", $this->ipsUtilControlId)));
             $text .= "<tr><td>" . $this->Translate("subscription valid to") . "</td><td>" . $subscriptionValidUntil . "</td></tr>" . PHP_EOL;
 
@@ -381,7 +404,8 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
          */
         private function genOverviewByTag($tagName, $typeName)
         {
-            $this->SendDebug(__FUNCTION__, "Erzeuge Text fuer die Uebersichtsseite für Tag " . $tagName . " und Typ " . $typeName, 0);
+            $this->DebugProgress("Dokumentiere tabellarische Objektübersicht vom Typ  " . $typeName . ", getaggt mit # ". $tagName,true);
+            
             $timeStart = microtime(true);
             $text = "";
             $text .= "<h2>" . $tagName . " (" . $typeName . ")</h2>" . PHP_EOL;
@@ -389,8 +413,8 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             // Übersicht der Skripte
             // ---------------------
             if (($typeName == $this->Translate("SCRIPT")) && ($this->ReadPropertyBoolean("overviewScripts"))) {
-                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (SCRIPT)", 0);
-            
+                $this->DebugProgress("Starte Tag '" . $tagName . "' (SCRIPT)");
+
                 $text .= "<table border=\"1\" cellpadding=\"2px\">" . PHP_EOL;
                 $text .= "<thead><tr align=\"center\" style=\"font-weight:bold;background-color:#0b2f51;color:#ffffff;\">" . PHP_EOL;
                 $text .= "<td width=\"10%\">Id</td>" . PHP_EOL;
@@ -424,8 +448,8 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             // Übersicht der Variablen
             // -----------------------
             if (($typeName == $this->Translate("VARIABLE")) && ($this->ReadPropertyBoolean("overviewVars"))) {
-                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (VARIABLE)", 0);
-                
+                $this->DebugProgress("Starte Tag '" . $tagName . "' (VARIABLE)");
+
                 $text .= "<table border=\"1\" cellpadding=\"2px\">" . PHP_EOL;
                 $text .= "<thead><tr style=\"font-weight:bold;background-color:#0b2f51;color:#ffffff;\">" . PHP_EOL;
                 $text .= "<td align=\"center\" width=\"10%\">Id</td>" . PHP_EOL;
@@ -456,7 +480,7 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             // Übersicht der Links
             // -------------------
             if (($typeName == $this->Translate("LINK")) && ($this->ReadPropertyBoolean("overviewLinks"))) {
-                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (LINK)", 0);
+                $this->DebugProgress("Starte Tag '" . $tagName . "' (LINK)");
 
                 $text .= "<table border=\"1\" cellpadding=\"2px\">" . PHP_EOL;
                 $text .= "<thead><tr align=\"center\" style=\"font-weight:bold;background-color:#0b2f51;color:#ffffff;\">" . PHP_EOL;
@@ -482,8 +506,8 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             // Übersicht der Ereignisse
             // ------------------------
             if (($typeName == $this->Translate("EVENT")) && ($this->ReadPropertyBoolean("overviewEvent"))) {
-                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (EVENT)", 0);
-               
+                $this->DebugProgress("Starte Tag '" . $tagName . "' (EVENT)");
+
                 $text .= "<table border=\"1\" cellpadding=\"2px\">" . PHP_EOL;
                 $text .= "<thead><tr align=\"center\" style=\"font-weight:bold;background-color:#0b2f51;color:#ffffff;\">" . PHP_EOL;
                 $text .= "<td width=\"10%\">Id</td>" . PHP_EOL;
@@ -514,8 +538,8 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             // Übersicht der Instanzen
             // -----------------------
             if (($typeName == $this->Translate("INSTANCE")) && ($this->ReadPropertyBoolean("overviewInstances"))) {
-                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (INSTANCE)", 0);
-                
+                $this->DebugProgress("Starte Tag '" . $tagName . "' (INSTANCE)");
+
                 $text .= "<table border=\"1\" cellpadding=\"2px\">" . PHP_EOL;
                 $text .= "<thead><tr align=\"center\" style=\"font-weight:bold;background-color:#0b2f51;color:#ffffff;\">" . PHP_EOL;
                 $text .= "<td width=\"10%\">Id</td>" . PHP_EOL;
@@ -542,8 +566,8 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             // Übersicht der Medien
             // --------------------
             if (($typeName == $this->Translate("MEDIA")) && ($this->ReadPropertyBoolean("overviewMedia"))) {
-                $this->SendDebug(__FUNCTION__, "Starte Tag '" . $tagName . "' (MEDIA)", 0);
-                
+                $this->DebugProgress("Starte Tag '" . $tagName . "' (MEDIA)");
+
                 $text .= "<table border=\"1\" cellpadding=\"2px\">" . PHP_EOL;
                 $text .= "<thead>" . PHP_EOL;
                 $text .= "<tr align=\"center\" style=\"font-weight:bold;background-color:#0b2f51;color:#ffffff\">" . PHP_EOL;
@@ -567,11 +591,9 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
                 $text .= "</table>";
             }
 
-
-
             $timeStop = microtime(true);
             $dauer = round(($timeStop - $timeStart), 2);
-            $this->SendDebug(__FUNCTION__, "Overview Erzeugung nach Tags nach " . $dauer . " Sekunden abgeschlossen", 0);
+            $this->DebugProgress("Erzeugung Übersicht nach Tags nach " . $dauer . " Sekunden abgeschlossen");
 
             return $text;
         }
@@ -584,8 +606,8 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
          */
         private function genOverviewArray()
         {
-            $this->SendDebug(__FUNCTION__, "Durchsuche alle ObjectInfos auf Tags", 0);
             $timeStart = microtime(true);
+            $this->DebugProgress("Erstelle Liste aller IPS Objekte nach Typ gruppiert",true);
 
             foreach (IPS_GetObjectList() as $o) {
                 $tmp1 = IPS_GetObject($o);
@@ -602,7 +624,8 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
 
             $timeStop = microtime(true);
             $dauer = round(($timeStop - $timeStart), 2);
-            $this->SendDebug(__FUNCTION__, "Das Zusammenstellen aller Tags hat " . $dauer . " Sekunden gedauert.", 0);
+            $this->DebugProgress("Das Zusammenstellen aller Tags hat " . $dauer . " Sekunden gedauert.");
+
         }
 
 
@@ -650,7 +673,7 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
          */
         private function removeTagsFromText($text)
         {
-            //$this->SendDebug(__FUNCTION__, "Entferne Tags aus Text '" . $text . "'", 0);
+        
             if ($this->ReadPropertyBoolean("overviewRemoveDescTags")) {
                 return preg_replace("/#(\w+)/", "", $text);
             } else {
@@ -665,14 +688,17 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
         */
         private function createScriptFiles()
         {
-            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Skript Detail Seiten", 0);
+            $this->DebugProgress("Starte mit der Erzeugung der Skript Detail Seiten",true);
+
             $timeStart = microtime(true);
 
             $this->pdf->Bookmark('Scripts', 1, -1, '', '', array(0,0,0));
             $scriptList = IPS_GetScriptList();
 
-            $this->SendDebug(__FUNCTION__, count($scriptList) . " Skripte werden dokumentiert", 0);
+            $this->DebugProgress(count($scriptList) . " Skripte werden dokumentiert");
+
             foreach ($scriptList as $value) {
+
                 $text = "<h2>Script #" . $value . " - " . IPS_GetName($value) . "</h2>";
 
                 $this->pdf->Bookmark($value . "(" . IPS_GetName($value) . ")", 2, -1, '', '', array(0,0,0));
@@ -686,17 +712,26 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
 
             $timeStop = microtime(true);
             $dauer = round(($timeStop - $timeStart), 2);
-            $this->SendDebug(__FUNCTION__, "Erstellung der Skript Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
+            $this->DebugProgress("Erstellung der Skript Detailseiten in " . $dauer . " Sekunden abgeschlossen");
+
+        }
+
+        public function ReloadConfigurationForm()
+        {
+            $this->ReloadForm();
         }
 
         private function createVariableFiles()
         {
-            $this->SendDebug(__FUNCTION__, "Starte mit der Erzeugung der Variablen Detail Seiten", 0);
+            $this->DebugProgress("Starte mit der Erzeugung der Variablen Detail Seiten",true);
+
             $timeStart = microtime(true);
 
             $varList = IPS_GetVariableList();
-            $this->SendDebug(__FUNCTION__, count($varList) . " Variablen werden dokumentiert", 0);
+            $this->DebugProgress(count($varList) . " Variablen werden dokumentiert");
+
             foreach ($varList as $value) {
+
                 $text = "<h2>Variable #" . $value . " - " . IPS_GetName($value) . "</h2>";
 
                 $this->pdf->Bookmark($value . "(" . IPS_GetName($value) . ")", 2, -1, '', '', array(0,0,0));
@@ -716,7 +751,8 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
 
             $timeStop = microtime(true);
             $dauer = round(($timeStop - $timeStart), 2);
-            $this->SendDebug(__FUNCTION__, "Erstellung der Variablen Detailseiten in " . $dauer . " Sekunden abgeschlossen", 0);
+            $this->DebugProgress("Erstellung der Variablen Detailseiten in " . $dauer . " Sekunden abgeschlossen");
+
         }
 
 
@@ -770,5 +806,17 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             }
 
             return $text;
+        }
+
+        private function DebugProgress($text,$progress = false)
+        {
+
+            $this->SendDebug(__FUNCTION__, $text, 0);
+
+            if($progress)
+            {
+                $this->UpdateFormField("progressDetail", "caption", $text);
+            }
+            
         }
     }

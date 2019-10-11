@@ -2,9 +2,9 @@
 	"id": "{BCE083BE-B10B-402F-A2FC-850F3D4923F6}",
 	"author": "Thorsten Mueller",
 	"name": "Thorsten9",
-	"url": "https://github.com/thorstenMueller/SymPdfDoc",
+	"url": "https://github.com/thorstenMueller/SymDoc",
 	"compatibility": {
-		"version": "5.1"
+		"version": "5.2"
 	},
 	"version": "0.1",
 	"build": 0,

@@ -1,12 +1,12 @@
 {
-  "elements": [
+  "actions": [
     {
       "type": "Label",
       "caption": "This module generates a pdf based documentation of your symcon installation."
     },
     {
       "type": "ExpansionPanel",
-      "caption": "settings for overview page",
+      "caption": "general settings",
       "items": [
         {
           "type": "CheckBox",
@@ -22,7 +22,13 @@
           "type": "CheckBox",
           "name": "overviewExtProperties",
           "caption": "include extended properties of symcon installation (backup count, LogfileVerbose, ...)"
-        },
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "overview table",
+      "items": [
         {
           "type": "CheckBox",
           "name": "overviewScripts",
@@ -67,42 +73,72 @@
     },
     {
       "type": "ExpansionPanel",
-      "caption": "settings for detail pages",
+      "caption": "object details",
       "items": [
-        {
-          "type": "CheckBox",
-          "name": "detailsScriptInclude",
-          "caption": "include script content in documentation"
-        },
         {
           "type": "CheckBox",
           "name": "detailsShowRefs",
           "caption": "include list of objects references in object details  --- MIGHT TAKE LONGER IN BIG INSTALLATIONS"
         },
         {
-          "type": "CheckBox",
-          "name": "detailsIncludeVarPages",
-          "caption": "create detail pages for all variables"
+          "type": "ExpansionPanel",
+          "caption": "script details",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "detailsScriptInclude",
+              "caption": "include script content in documentation"
+            },
+            {
+              "type": "CheckBox",
+              "name": "detailsIncludeScriptPages",
+              "caption": "create detail pages for all scripts"
+            }
+          ]
         },
         {
-          "type": "CheckBox",
-          "name": "detailsIncludeScriptPages",
-          "caption": "create detail pages for all scripts"
+          "type": "ExpansionPanel",
+          "caption": "variable details",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "detailsIncludeVarPages",
+              "caption": "create detail pages for all variables"
+            }
+          ]
         },
         {
-          "type": "CheckBox",
-          "name": "detailsIncludeEventPages",
-          "caption": "create detail pages for all events"
+          "type": "ExpansionPanel",
+          "caption": "event details",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "detailsIncludeEventPages",
+              "caption": "create detail pages for all events"
+            }
+          ]
         },
         {
-          "type": "CheckBox",
-          "name": "detailsIncludeInstancePages",
-          "caption": "create detail pages for all instances"
+          "type": "ExpansionPanel",
+          "caption": "instance details",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "detailsIncludeInstancePages",
+              "caption": "create detail pages for all instances"
+            }
+          ]
         },
         {
-          "type": "CheckBox",
-          "name": "detailsIncludeMediaPages",
-          "caption": "create detail pages for all media"
+          "type": "ExpansionPanel",
+          "caption": "media details",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "detailsIncludeMediaPages",
+              "caption": "create detail pages for all media"
+            }
+          ]
         }
       ]
     },
@@ -111,6 +147,14 @@
       "name": "genSymDoc",
       "caption": "Generiere PDF Dokumentation",
       "onClick": "SymDoc_WritePdf($id);"
+    },
+    {
+      "type": "ProgressBar",
+      "name": "progressDetail",
+      "caption": "Fortschritt Details",
+      "indeterminate": true,
+      "minimum": 0,
+      "visible": false
     }
   ]
-}
+  }
