@@ -31,11 +31,6 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
         private $tagList = array();
        
         private $pdf;
-
-        public function __construct($InstanceID)
-        {
-            parent::__construct($InstanceID);
-        }
  
         public function Create()
         {
@@ -70,11 +65,10 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             parent::ApplyChanges();
         }
 
-        public function GetConfigurationForm()
+        public function Destroy()
         {
-            $jsonForm = json_decode(file_get_contents(__DIR__ . "/form.json"), true);
-
-            return json_encode($jsonForm);
+            //Never delete this line!
+            parent::Destroy();
         }
 
         /**
@@ -263,12 +257,18 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
             // IPS Properties
             $this->pdf->AddPage();
 
-            $this->pdf->Bookmark('Generische Informationen', 1, -1, '', '', array(0,0,0));
-            $this->pdf->writeHTML($this->overviewGenericInfo(), true, false, true, false, '');
+            if ($this->ReadPropertyBoolean("overviewGeneralInfos"))
+            {
+                $this->pdf->Bookmark('Generische Informationen', 1, -1, '', '', array(0,0,0));
+                $this->pdf->writeHTML($this->overviewGenericInfo(), true, false, true, false, '');
+            }
 
             // Spezialschalter
-            $this->pdf->Bookmark('Erweiterte Eigenschaften', 1, -1, '', '', array(0,0,0));
-            $this->pdf->writeHTML($this->overviewExtProps(), true, false, true, false, '');
+            if ($this->ReadPropertyBoolean("overviewExtProperties"))
+            {
+                $this->pdf->Bookmark('Erweiterte Eigenschaften', 1, -1, '', '', array(0,0,0));
+                $this->pdf->writeHTML($this->overviewExtProps(), true, false, true, false, '');
+            }
 
             // Zusammenfassung aller Objekte pro Tag
             // =====================================
@@ -716,10 +716,10 @@ include_once __DIR__ . '/../libs/vendor/autoload.php';
 
         }
 
-        public function ReloadConfigurationForm()
-        {
-            $this->ReloadForm();
-        }
+        //public function ReloadConfigurationForm()
+        //{
+        //    $this->ReloadForm();
+        //}
 
         private function createVariableFiles()
         {
