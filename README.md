@@ -1,3 +1,5 @@
+# Dieses Modul wird nicht mehr aktiv gepflegt!
+
 # SymDoc - Dokumentation der IP-Symcon Umgebung
 SymDoc erzeugt eine Dokumentation auf Basis von MD-Dateien (https://de.wikipedia.org/wiki/Markdown). Das ist die Syntax die auch für diese README Datei verwendet wird.
 Es erzeugt eine Übersichtsseite mit einer tabellarischen und gruppierten Darstellung aller (per Konfiguration) gewünschter
